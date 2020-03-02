@@ -105,13 +105,12 @@ function Main {
     #
     # Get the events:
     try{
-        $events = iex "Get-WinEvent $filter -ErrorAction Stop"
+        $events = Get-WinEvent $filter -ErrorAction Stop
     }
     catch {
         Write-Host "Get-WinEvent $filter -ErrorAction Stop"
     	Write-Host "Get-WinEvent error: " $_.Exception.Message "`n"
         Write-Host "Exiting...`n"
-        exit
     }
     ForEach ($event in $events) {
         # Custom reporting object:
