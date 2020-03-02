@@ -105,7 +105,8 @@ function Main {
     #
     # Get the events:
     try{
-        $events = Get-WinEvent $filter -ErrorAction Stop
+        $HT = @{ FilterHashtable = $filter }
+        $events = Get-WinEvent @HT -ErrorAction Stop
     }
     catch {
         Write-Host "Get-WinEvent $filter -ErrorAction Stop"
@@ -550,7 +551,7 @@ function Check-Options($file, $log)
         }
         Else{
             write-host $log_error
-            exit 1
+            # exit 1
         }    
     }
     else{ # Filename provided, check if it exists:
@@ -566,7 +567,7 @@ function Check-Options($file, $log)
             {
                 Write-Host "Get-WinEvent error: " $_.Exception.Message "`n"
                 Write-Host "Exiting...`n"
-                exit
+                # exit
             }
             switch ($event.LogName){
                 "Security"    {$logname="Security"}
@@ -575,12 +576,14 @@ function Check-Options($file, $log)
                 "Microsoft-Windows-AppLocker/EXE and DLL"   {$logname="Applocker"}
                 "Microsoft-Windows-PowerShell/Operational"   {$logname="Powershell"}
                 "Microsoft-Windows-Sysmon/Operational"   {$logname="Sysmon"}
-                default       {"Logic error 3, should not reach here...";Exit 1}
+                default {
+                    "Logic error 3, should not reach here...";#Exit 1
+                }
             }
         }
         else{ # Filename does not exist, exit
             Write-host "Error: no such file. Exiting..."
-            exit 1
+            # exit 1
         }
     }
     return $logname
@@ -590,35 +593,39 @@ function Create-Filter($file, $logname)
 {
     # Return the Get-Winevent filter 
     #
-    $sys_events="7030,7036,7045,7040"
-    $sec_events="4688,4672,4720,4728,4732,4756,4625,4673,4648"
-    $app_events="2"
-    $applocker_events="8003,8004,8006,8007"
-    $powershell_events="4103,4104"
-    $sysmon_events="1,7"
+    $sys_events= @('7030','7036','7045','7040')
+    $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648')
+    $app_events=@('2')
+    $applocker_events=@('8003','8004','8006','8007')
+    $powershell_events=@('4103','4104')
+    $sysmon_events=@('1','7')
     if ($file -ne ""){
         switch ($logname){
-            "Security"    {$filter="@{path=""$file"";ID=$sec_events}"}
-            "System"      {$filter="@{path=""$file"";ID=$sys_events}"}
-            "Application" {$filter="@{path=""$file"";ID=$app_events}"}
-            "Applocker"   {$filter="@{path=""$file"";ID=$applocker_events}"}
-            "Powershell"  {$filter="@{path=""$file"";ID=$powershell_events}"}
-            "Sysmon"      {$filter="@{path=""$file"";ID=$sysmon_events}"}
-            default       {"Logic error 1, should not reach here...";Exit 1}
+            "Security"    {$filter=@{path='$file';ID=$sec_events}}
+            "System"      {$filter=@{path='$file';ID=$sys_events}}
+            "Application" {$filter=@{path='$file';ID=$app_events}}
+            "Applocker"   {$filter=@{path='$file';ID=$applocker_events}}
+            "Powershell"  {$filter=@{path='$file';ID=$powershell_events}}
+            "Sysmon"      {$filter=@{path='$file';ID=$sysmon_events}}
+            default       {
+                "Logic error 1, should not reach here..." #;Exit 1
+            }
         }
     }
     else{
         switch ($logname){
-            "Security"    {$filter="@{Logname=""Security"";ID=$sec_events}"}
-            "System"      {$filter="@{Logname=""System"";ID=$sys_events}"}
-            "Application" {$filter="@{Logname=""Application"";ID=$app_events}"}
-            "Applocker"   {$filter="@{logname=""Microsoft-Windows-AppLocker/EXE and DLL"";ID=$applocker_events}"}
-            "Powershell"  {$filter="@{logname=""Microsoft-Windows-PowerShell/Operational"";ID=$powershell_events}"}
-            "Sysmon"      {$filter="@{logname=""Microsoft-Windows-Sysmon/Operational"";ID=$sysmon_events}"}
-            default       {"Logic error 2, should not reach here...";Exit 1}
+            "Security"    {$filter=@{Logname='Security';ID=$sec_events}}
+            "System"      {$filter=@{Logname='System';ID=$sys_events}}
+            "Application" {$filter=@{Logname='Application';ID=$app_events}}
+            "Applocker"   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL';ID=$applocker_events}}
+            "Powershell"  {$filter=@{logname='Microsoft-Windows-PowerShell/Operational';ID=$powershell_events}}
+            "Sysmon"      {$filter=@{logname='Microsoft-Windows-Sysmon/Operational';ID=$sysmon_events}}
+            default       {"
+                Logic error 2, should not reach here..." # ;Exit 1
+            }
         }
     }
-    return $filter
+    $filter
 }
 
 
