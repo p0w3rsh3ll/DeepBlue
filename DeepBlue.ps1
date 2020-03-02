@@ -1,4 +1,6 @@
-﻿<#
+﻿
+Function DeepBlue {
+<#
 .SYNOPSIS
 
 A PowerShell module for hunt teaming via Windows event logs
@@ -39,9 +41,39 @@ function Main {
     $text="" # Temporary scratch pad variable to hold output text
     $minlength=1000 # Minimum length of command line to alert
     # Load cmd match regexes from csv file, ignore comments
-    $regexes = Get-Content ".\regexes.txt" | Select-String '^[^#]' | ConvertFrom-Csv
+    $regexes = @(
+        @{ Type = '0' ; Regex = '^cmd.exe /c echo [a-z]{6} > \\\\.\\pipe\\[a-z]{6}$' ; String = 'Metasploit-style cmd with pipe (possible use of Meterpreter getsystem)'},
+        @{ Type = '0' ; Regex = '^%SYSTEMROOT%\\[a-zA-Z]{8}\.exe$' ; String = 'Metasploit-style %SYSTEMROOT% image path (possible use of Metasploit Native upload exploit payload)'},
+        @{ Type = '0' ; Regex = 'powershell.*FromBase64String.*IO.Compression.GzipStream' ; String = 'Metasploit-style base64 encoded/compressed PowerShell function (possible use of Metasploit PowerShell exploit payload)'},
+        @{ Type = '0' ; Regex = 'DownloadString\(.http' ; String = 'Download via Net.WebClient DownloadString'},
+        @{ Type = '0' ; Regex = 'mimikatz' ; String = 'Command referencing Mimikatz'},
+        @{ Type = '0' ; Regex = 'Invoke-Mimikatz.ps' ; String = 'PowerSploit Invoke-Mimikatz.ps1'},
+        @{ Type = '0' ; Regex = 'PowerSploit.*ps1' ; String = 'Use of PowerSploit'},
+        @{ Type = '0' ; Regex = 'User-Agent' ; String = 'User-Agent set via command line'},
+        @{ Type = '0' ; Regex = '[a-zA-Z0-9/+=]{500}' ; String = '500+ consecutive Base64 characters'},
+        @{ Type = '0' ; Regex = 'powershell.exe.*Hidden.*Enc' ; String = 'Base64 encoded and hidden PowerShell command'},
+        # Generic csc.exe alert, comment out if experiencing false positives
+        @{ Type = '0' ; Regex = '\\csc\.exe' ; String = 'Use of C Sharp compiler csc.exe'},
+        @{ Type = '0' ; Regex = '\\csc\.exe.*\\Appdata\\Local\\Temp\\[a-z0-9]{8}\.cmdline' ; String = 'PSAttack-style command via csc.exe'},
+        # Generic cvtres.exe alert, comment out if experiencing false positives
+        @{ Type = '0' ; Regex = '\\cvtres\.exe.*' ; String = 'Resource File To COFF Object Conversion Utility cvtres.exe'},
+        @{ Type = '0' ; Regex = '\\cvtres\.exe.*\\AppData\\Local\\Temp\\[A-Z0-9]{7}\.tmp' ; String = 'PSAttack-style command via cvtres.exe'},
+        @{ Type = '1' ; Regex = '^[a-zA-Z]{22}$' ; String = 'Metasploit-style service name: 22 characters'},
+        @{ Type = '1' ; Regex = '^[a-zA-Z]{16}$' ; String = 'Metasploit-style service name: 16 characters'}
+    ) | 
+    ForEach-Object {
+        [PSCustomObject]$_
+    }
+
     # Load cmd whitelist regexes from csv file, ignore comments
-    $whitelist = Get-Content ".\whitelist.txt" | Select-String '^[^#]' | ConvertFrom-Csv 
+    # $whitelist = Get-Content ".\whitelist.txt" | Select-String '^[^#]' | ConvertFrom-Csv
+    $whitelist = @(
+        @{ Regex = '^"C:\\Program Files\\Google\\Chrome\\Application\\chrome\.exe"'},
+        @{ Regex = '^"C:\\Program Files\\Google\\Update\\GoogleUpdate\.exe"'}
+    ) | ForEach-Object {
+        [PSCustomObject]$_
+    }
+
     $logname=Check-Options $file $log
     #"Processing the " + $logname + " log..."
     $filter=Create-Filter $file $logname
@@ -717,3 +749,4 @@ function Remove-Spaces($string){
 
 . Main
 
+}
