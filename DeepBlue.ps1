@@ -84,43 +84,55 @@ Process {
 End {}
 }
 
-function Create-Filter($file, $logname)
-{
-    # Return the Get-Winevent filter 
-    #
+# Return the Get-Winevent filter 
+Function Create-Filter {
+[CmdletBinding()]
+Param(
+[Parameter()]
+[string]$File,
+
+[Parameter(Mandatory)]
+[string]$LogName
+
+)
+Begin {
     $sys_events= @('7030','7036','7045','7040')
     $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648')
     $app_events=@('2')
     $applocker_events=@('8003','8004','8006','8007')
     $powershell_events=@('4103','4104')
     $sysmon_events=@('1','7')
-    if ($file){
-        switch ($logname){
-            'Security'    {$filter=@{path="$($file)";ID=$sec_events}}
-            'System'      {$filter=@{path="$($file)";ID=$sys_events}}
-            'Application' {$filter=@{path="$($file)";ID=$app_events}}
-            'Applocker'   {$filter=@{path="$($file)";ID=$applocker_events}}
-            'Powershell'  {$filter=@{path="$($file)";ID=$powershell_events}}
-            'Sysmon'      {$filter=@{path="$($file)";ID=$sysmon_events}}
+}
+Process {
+    if ($File){
+        switch ($LogName){
+            'Security'    {$filter=@{path="$($file)";ID=$sec_events} ;break}
+            'System'      {$filter=@{path="$($file)";ID=$sys_events} ;break}
+            'Application' {$filter=@{path="$($file)";ID=$app_events} ;break}
+            'Applocker'   {$filter=@{path="$($file)";ID=$applocker_events} ;break}
+            'Powershell'  {$filter=@{path="$($file)";ID=$powershell_events} ;break}
+            'Sysmon'      {$filter=@{path="$($file)";ID=$sysmon_events} ;break}
             default       {
-                'Logic error 1, should not reach here...'
+                Throw 'Logic error 1, should not reach here...'
             }
         }
-    }
-    else{
-        switch ($logname){
-            'Security'    {$filter=@{Logname='Security';ID=$sec_events}}
-            'System'      {$filter=@{Logname='System';ID=$sys_events}}
-            'Application' {$filter=@{Logname='Application';ID=$app_events}}
-            'Applocker'   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL';ID=$applocker_events}}
-            'Powershell'  {$filter=@{logname='Microsoft-Windows-PowerShell/Operational';ID=$powershell_events}}
-            'Sysmon'      {$filter=@{logname='Microsoft-Windows-Sysmon/Operational';ID=$sysmon_events}}
+    } else{
+        switch ($LogName) {
+            'Security'    {$filter=@{Logname='Security';ID=$sec_events} ;break}
+            'System'      {$filter=@{Logname='System';ID=$sys_events } ;break}
+            'Application' {$filter=@{Logname='Application';ID=$app_events} ;break}
+            'Applocker'   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL';ID=$applocker_events} ;break}
+            'Powershell'  {$filter=@{logname='Microsoft-Windows-PowerShell/Operational';ID=$powershell_events} ;break}
+            'Sysmon'      {$filter=@{logname='Microsoft-Windows-Sysmon/Operational';ID=$sysmon_events} ;break}
             default       {
-                'Logic error 2, should not reach here...'
+                Throw 'Logic error 2, should not reach here...'
             }
         }
     }
     $filter
+
+}
+End {}
 }
 
 function Check-Command(){
@@ -287,17 +299,6 @@ function Remove-Spaces($string){
         [PSCustomObject]$_
     }
 
-    Switch ($PSCmdlet.ParameterSetName) {
-        'ByLogName' {
-            $logname = $Log ; break
-        }
-        'ByFilePath' {
-            $logname = Check-EventFile -File $File # -Verbose
-        }
-        default {}
-    }
-    #"Processing the " + $logname + " log..."
-    $filter=Create-Filter $file $logname
     # Passworg guessing/spraying variables:
     $maxfailedlogons=5 # Alert after this many failed logons
     $failedlogons=@{}   # HashTable of failed logons per user
@@ -328,6 +329,19 @@ function Remove-Spaces($string){
 }
 Process {
 
+    Switch ($PSCmdlet.ParameterSetName) {
+        'ByLogName' {
+            $logname = $Log 
+            $filter = Create-Filter -LogName $logname
+            break
+        }
+        'ByFilePath' {
+            $logname = Check-EventFile -File $File # -Verbose
+            $filter = Create-Filter -File $file -LogName $logname
+            break
+        }
+        default {}
+    }
 
     try {
         $HT = @{ FilterHashtable = $filter }
