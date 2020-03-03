@@ -49,53 +49,39 @@ Param(
 Begin {
 
 #region helper functions
-function Check-Options($file, $log)
-{
-    $log_error='Unknown and/or unsupported log type'
-    $logname=''
-    # Checks the command line options, return logname to parse
-    if($file -eq ''){ # No filename provided, parse local logs
-        if(($log -eq '') -or ($log -eq 'Security')){ # Parse the security log if no log was selected
-            $logname='Security'
-        } ElseIf ($log -eq 'System'){
-            $logname='System'
-        } ElseIf ($log -eq 'Application'){
-            $logname='Application'
-        } ElseIf ($log -eq 'Sysmon'){
-            $logname='Sysmon'
-        } ElseIf ($log -eq 'Powershell'){
-            $logname='Powershell'
-        } Else{
-            write-host $log_error
-        }    
-    } else { # Filename provided, check if it exists:
-        if (Test-Path -Path $file -PathType Leaf){ # File exists. Todo: verify it is an evtx file. 
-            # Get-WinEvent will generate this error for non-evtx files: "...file does not appear to be a valid log file. 
-            # Specify only .evtx, .etl, or .evt filesas values of the Path parameter."
-            #
-            # Check the LogName of the first event
-            try {
-                $event = Get-WinEvent -Path $file -MaxEvents 1 -ErrorAction Stop
-            } catch {
-                Write-Verbose "Get-WinEvent cannot read $($file) because $($_.Exception.Message)"
-            }
-            switch ($event.LogName){
-                'Security'    {$logname='Security'}
-                'System'      {$logname='System'}
-                'Application' {$logname='Application'}
-                'Microsoft-Windows-AppLocker/EXE and DLL'   {$logname='Applocker'}
-                'Microsoft-Windows-PowerShell/Operational'   {$logname='Powershell'}
-                'Microsoft-Windows-Sysmon/Operational'   {$logname='Sysmon'}
-                default {
-                    'Logic error 3, should not reach here...';#Exit 1
-                }
-            }
-        } else{ # Filename does not exist, exit
-            Write-host 'Error: no such file. Exiting...'
-            # exit 1
+Function Check-EventFile {
+[CmdletBinding()]
+Param(
+[Parameter(Mandatory)]
+[string]$File
+)
+Begin {}
+Process {
+    # File exists. Todo: verify it is an evtx file.
+
+    # Get-WinEvent will generate this error for non-evtx files: "...file does not appear to be a valid log file. 
+    # Specify only .evtx, .etl, or .evt filesas values of the Path parameter."
+    #
+    # Check the LogName of the first event
+    try {
+        $event = Get-WinEvent -Path $File -MaxEvents 1 -ErrorAction Stop -Verbose:$false
+    } catch {
+        Write-Verbose "Get-WinEvent cannot read $($File) because $($_.Exception.Message)" -Verbose
+    }
+    Write-Verbose -Message "Input file $($File) contains a log $($event.LogName)"
+    switch ($event.LogName){
+        'Security'    { 'Security'    ; break}
+        'System'      { 'System'      ; break }
+        'Application' { 'Application' ; break}
+        'Microsoft-Windows-AppLocker/EXE and DLL'  {'Applocker' ; break}
+        'Microsoft-Windows-PowerShell/Operational' {'Powershell'; break}
+        'Microsoft-Windows-Sysmon/Operational'     {'Sysmon'    ; break}
+        default {
+            Write-Error -Message "Input file $($File) that is a log $($event.LogName) is not handled"
         }
     }
-    $logname
+}
+End {}
 }
 
 function Create-Filter($file, $logname)
@@ -188,7 +174,7 @@ function Check-Command(){
         }
         $obj.Command = $commandline
         $obj.Results += $text
-        Write-Output $obj
+        $obj
     }
     return
 }    
@@ -301,7 +287,15 @@ function Remove-Spaces($string){
         [PSCustomObject]$_
     }
 
-    $logname=Check-Options $file $log
+    Switch ($PSCmdlet.ParameterSetName) {
+        'ByLogName' {
+            $logname = $Log ; break
+        }
+        'ByFilePath' {
+            $logname = Check-EventFile -File $File # -Verbose
+        }
+        default {}
+    }
     #"Processing the " + $logname + " log..."
     $filter=Create-Filter $file $logname
     # Passworg guessing/spraying variables:
@@ -377,7 +371,7 @@ Process {
                         $obj.Results += "Domain: $domain`n"
                         $obj.Results += "User SID: $securityid`n"
                         $obj.Results += "Privileges: $privileges"
-                        Write-Output $obj
+                        $obj
                     }
                     # Track User SIDs used during admin logons (can track one account logging into multiple systems)
                     $totaladminlogons+=1
@@ -446,7 +440,7 @@ Process {
                 $obj.Message = 'New User Created' 
                 $obj.Results = "Username: $username`n"
                 $obj.Results += "User SID: $securityid`n"
-                Write-Output $obj
+                $obj
             }
             ElseIf(($event.id -eq 4728) -or ($event.id -eq 4732) -or ($event.id -eq 4756)){
                 # A member was added to a security-enabled (global|local|universal) group.
@@ -462,7 +456,7 @@ Process {
                     }
                     $obj.Results = "Username: $username`n"
                     $obj.Results += "User SID: $securityid`n"
-                    Write-Output $obj
+                    $obj
                 }
             }
             ElseIf($event.id -eq 4625){
@@ -493,7 +487,7 @@ Process {
 
                     $obj.Results += "Username: $username`n"
                     $obj.Results += "Domain Name: $domainname`n"
-                    Write-Output $obj
+                    $obj
                 }
             }
             ElseIf($event.id -eq 4648){
@@ -532,7 +526,7 @@ Process {
                         $obj.Results += "Target Usernames: $usernames`n"
                         $obj.Results += "Accessing Username: $username`n"
                         $obj.Results += "Accessing Host Name: $hostname`n"
-                        Write-Output $obj
+                        $obj
                         $passspraytrack = @{} # Reset
                     }
                 }
@@ -550,7 +544,7 @@ Process {
                     $obj.Command = $commandline
                     $obj.Results = "Service name: $servicename`n"
                     $obj.Results +=$text 
-                    Write-Output $obj
+                    $obj
                 }
                 # Check for suspicious cmd
                 if ($commandline){
@@ -568,7 +562,7 @@ Process {
                 # Check for suspicious service name
                 $servicecmd=1 # CLIs via service creation get extra check
                 $obj.Results += (Check-Regex $servicename 1)
-                Write-Output $obj
+                $obj
             }
             ElseIf ($event.id -eq 7036){
                 # The ... service entered the stopped|running state.
@@ -578,7 +572,7 @@ Process {
                     $obj.Message = 'Suspicious Service Name'
                     $obj.Results = "Service name: $servicename`n"
                     $obj.Results += $text
-                    Write-Output $obj
+                    $obj
                 }
             }
             ElseIf ($event.id -eq 7040){
@@ -595,7 +589,7 @@ Process {
                         $obj.Message = 'Event Log Service Started'
                         $obj.Results += 'Selective event log manipulation may precede this event.'
                     }
-                    Write-Output $obj
+                    $obj
                 }
             }
         } 
@@ -631,7 +625,7 @@ Process {
                     # This occurs when parsing remote event logs sent from systems with EMET installed
                     $obj.Message='Warning: EMET Message field is blank. Install EMET locally to see full details of this alert'
                 }
-                Write-Output $obj
+                $obj
             }
         }  
         ElseIf ($logname -eq 'Applocker'){
@@ -641,7 +635,7 @@ Process {
                 $command = $event.message -Replace ' was .*$',''
                 $obj.Command=$command
                 $obj.Results = $event.message
-                Write-Output $obj
+                $obj
             }
             ElseIf ($event.id -eq 8004){ 
                 $obj.Message='Applocker Block'
@@ -649,7 +643,7 @@ Process {
                 $command = $event.message -Replace ' was .*$',''
                 $obj.Command=$command
                 $obj.Results = $event.message
-                Write-Output $obj
+                $obj
             }
         } 
         ElseIf ($logname -eq 'PowerShell'){
@@ -722,7 +716,7 @@ Process {
                         # $hash=$eventXML.Event.EventData.Data[5].'#text'
                         $obj.Command=$imageload
                         $obj.Results=  "Loaded by: $image"
-                        Write-Output $obj
+                        $obj
                      }
                  }
              }
@@ -735,7 +729,7 @@ Process {
             $obj.Message='Multiple admin logons for one account'
             $obj.Results= "Username: $username`n"
             $obj.Results += "User SID Access Count: " + $securityid.split().Count
-            Write-Output $obj
+            $obj
         }
     }
     # Iterate through failed logons hashtable (key is $username)
@@ -745,7 +739,7 @@ Process {
             $obj.Message='High number of logon failures for one account'
             $obj.Results= "Username: $username`n"
             $obj.Results += "Total logon failures: $count"
-            Write-Output $obj
+            $obj
         }
     }
     # Password spraying:
@@ -753,7 +747,7 @@ Process {
         $obj.Message='High number of total logon failures for multiple accounts'
         $obj.Results= "Total accounts: $totalfailedaccounts`n"
         $obj.Results+= "Total logon failures: $totalfailedlogons`n"
-        Write-Output $obj
+        $obj
     }
 
 }
