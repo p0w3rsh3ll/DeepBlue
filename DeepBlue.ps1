@@ -1,38 +1,39 @@
 ﻿
 Function DeepBlue {
 <#
-.SYNOPSIS
+    .SYNOPSIS
+        A PowerShell module for hunt teaming via Windows event logs
 
-A PowerShell module for hunt teaming via Windows event logs
-.DESCRIPTION
+    .DESCRIPTION
+        DeepBlueCLI can automatically determine events that are typically triggered during a majority of successful breaches, 
+        including use of malicious command lines including PowerShell. 
 
-DeepBlueCLI can automatically determine events that are typically triggered during a majority of successful breaches, including use of malicious command lines including PowerShell. 
-.Example
+    .EXAMPLE
+        DeepBlue
+        
+        Processes the local Windows security event log.
 
-Process local Windows security event log:
-.\DeepBlue.ps1
-.\DeepBlue.ps1 -log security
-.Example
-Process local Windows system event log:
+    .EXAMPLE
+        DeepBlue -Log System
 
-.\DeepBlue.ps1 -log system
-.\DeepBlue.ps1 "" system
-.Example
-Process evtx file:
+        Processes the local Windows system event log.
 
-.\DeepBlue.ps1 .\evtx\new-user-security.evtx
-.\DeepBlue.ps1 -file .\evtx\new-user-security.evtx
-.LINK
-https://github.com/sans-blue-team/DeepBlueCLI
+    .EXAMPLE
+        DeepBlue -File .\evtx\new-user-security.evtx
+        
+        Processes an evtx file.
 
+    .LINK
+        https://github.com/sans-blue-team/DeepBlueCLI
+
+    .NOTES
+        DeepBlueCLI 2.01
+        Eric Conrad, Backshore Communications, LLC
+        deepblue <at> backshore <dot> net
+        Twitter: @eric_conrad
+        http://ericconrad.com
 #>
 
-# DeepBlueCLI 2.01
-# Eric Conrad, Backshore Communications, LLC
-# deepblue <at> backshore <dot> net
-# Twitter: @eric_conrad
-# http://ericconrad.com
-#
 [CmdletBinding(DefaultParameterSetName='ByLogName')]
 Param(
 [Parameter(ParameterSetName='ByFilePath',Mandatory)]
