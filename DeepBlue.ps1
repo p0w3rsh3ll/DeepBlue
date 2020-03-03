@@ -46,8 +46,224 @@ Param(
 [Alias('LogName')]
 [string]$Log='Security'
 )           
+Begin {
 
-function Main {
+#region helper functions
+function Check-Options($file, $log)
+{
+    $log_error='Unknown and/or unsupported log type'
+    $logname=''
+    # Checks the command line options, return logname to parse
+    if($file -eq ''){ # No filename provided, parse local logs
+        if(($log -eq '') -or ($log -eq 'Security')){ # Parse the security log if no log was selected
+            $logname='Security'
+        } ElseIf ($log -eq 'System'){
+            $logname='System'
+        } ElseIf ($log -eq 'Application'){
+            $logname='Application'
+        } ElseIf ($log -eq 'Sysmon'){
+            $logname='Sysmon'
+        } ElseIf ($log -eq 'Powershell'){
+            $logname='Powershell'
+        } Else{
+            write-host $log_error
+        }    
+    } else { # Filename provided, check if it exists:
+        if (Test-Path -Path $file -PathType Leaf){ # File exists. Todo: verify it is an evtx file. 
+            # Get-WinEvent will generate this error for non-evtx files: "...file does not appear to be a valid log file. 
+            # Specify only .evtx, .etl, or .evt filesas values of the Path parameter."
+            #
+            # Check the LogName of the first event
+            try {
+                $event = Get-WinEvent -Path $file -MaxEvents 1 -ErrorAction Stop
+            } catch {
+                Write-Verbose "Get-WinEvent cannot read $($file) because $($_.Exception.Message)"
+            }
+            switch ($event.LogName){
+                'Security'    {$logname='Security'}
+                'System'      {$logname='System'}
+                'Application' {$logname='Application'}
+                'Microsoft-Windows-AppLocker/EXE and DLL'   {$logname='Applocker'}
+                'Microsoft-Windows-PowerShell/Operational'   {$logname='Powershell'}
+                'Microsoft-Windows-Sysmon/Operational'   {$logname='Sysmon'}
+                default {
+                    'Logic error 3, should not reach here...';#Exit 1
+                }
+            }
+        } else{ # Filename does not exist, exit
+            Write-host 'Error: no such file. Exiting...'
+            # exit 1
+        }
+    }
+    $logname
+}
+
+function Create-Filter($file, $logname)
+{
+    # Return the Get-Winevent filter 
+    #
+    $sys_events= @('7030','7036','7045','7040')
+    $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648')
+    $app_events=@('2')
+    $applocker_events=@('8003','8004','8006','8007')
+    $powershell_events=@('4103','4104')
+    $sysmon_events=@('1','7')
+    if ($file){
+        switch ($logname){
+            'Security'    {$filter=@{path="$($file)";ID=$sec_events}}
+            'System'      {$filter=@{path="$($file)";ID=$sys_events}}
+            'Application' {$filter=@{path="$($file)";ID=$app_events}}
+            'Applocker'   {$filter=@{path="$($file)";ID=$applocker_events}}
+            'Powershell'  {$filter=@{path="$($file)";ID=$powershell_events}}
+            'Sysmon'      {$filter=@{path="$($file)";ID=$sysmon_events}}
+            default       {
+                'Logic error 1, should not reach here...'
+            }
+        }
+    }
+    else{
+        switch ($logname){
+            'Security'    {$filter=@{Logname='Security';ID=$sec_events}}
+            'System'      {$filter=@{Logname='System';ID=$sys_events}}
+            'Application' {$filter=@{Logname='Application';ID=$app_events}}
+            'Applocker'   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL';ID=$applocker_events}}
+            'Powershell'  {$filter=@{logname='Microsoft-Windows-PowerShell/Operational';ID=$powershell_events}}
+            'Sysmon'      {$filter=@{logname='Microsoft-Windows-Sysmon/Operational';ID=$sysmon_events}}
+            default       {
+                'Logic error 2, should not reach here...'
+            }
+        }
+    }
+    $filter
+}
+
+function Check-Command(){
+    $text=''
+    $base64=''
+    # Check to see if command is whitelisted
+    foreach ($entry in $whitelist) {
+        if ($commandline -Match $entry.regex) {
+            # Command is whitelisted, return nothing
+            return
+        }
+    }
+    if ($commandline.length -gt $minlength){
+        $text += "Long Command Line: greater than $minlength bytes`n"
+    }
+    $text += (Check-Obfu $commandline)
+    $text += (Check-Regex $commandline 0)
+    $text += (Check-Creator $commandline $creator)
+    # Check for base64 encoded function, decode and print if found
+    # This section is highly use case specific, other methods of base64 encoding and/or compressing may evade these checks
+    if ($commandline -Match "\-enc.*[A-Za-z0-9/+=]{100}"){
+        $base64= $commandline -Replace '^.* \-Enc(odedCommand)? ',''
+    }
+    ElseIf ($commandline -Match ':FromBase64String\('){
+        $base64 = $commandline -Replace "^.*:FromBase64String\(\'*",''
+        $base64 = $base64 -Replace "\'.*$",''
+    }
+    if ($base64){
+        if ($commandline -Match 'Compression.GzipStream.*Decompress'){
+            # Metasploit-style compressed and base64-encoded function. Uncompress it.
+            $decoded=New-Object IO.MemoryStream(,[Convert]::FromBase64String($base64))
+            $uncompressed=(New-Object IO.StreamReader(((New-Object IO.Compression.GzipStream($decoded,[IO.Compression.CompressionMode]::Decompress))),[Text.Encoding]::ASCII)).ReadToEnd()
+            $obj.Decoded=$uncompressed
+            $text += 'Base64-encoded and compressed function`n'
+        }
+        else{
+            $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
+            $obj.Decoded=$decoded
+            $text += 'Base64-encoded function`n'
+            $text += (Check-Obfu $decoded)
+            $text += (Check-Regex $decoded 0)
+        }
+    }
+    if ($text){
+        if ($servicecmd){
+            $obj.Message = 'Suspicious Service Command'
+            $obj.Results = "Service name: $servicename`n"
+        }
+        Else{
+            $obj.Message = 'Suspicious Command Line'
+        }
+        $obj.Command = $commandline
+        $obj.Results += $text
+        Write-Output $obj
+    }
+    return
+}    
+
+function Check-Regex($string,$type){
+    $regextext='' # Local variable for return output
+    foreach ($regex in $regexes){
+        if ($regex.Type -eq $type) { # Type is 0 for Commands, 1 for services. Set in regexes.csv
+            if ($string -Match $regex.regex) {
+               $regextext += $regex.String + "`n"
+            }
+        }
+    }
+    #if ($regextext){ 
+    #   $regextext = $regextext.Substring(0,$regextext.Length-1) # Remove final newline.
+    #}
+    $regextext
+}
+
+function Check-Obfu($string){
+    # Check for special characters in the command. Inspired by Invoke-Obfuscation: https://twitter.com/danielhbohannon/status/778268820242825216
+    #
+    $obfutext=''       # Local variable for return output
+    $lowercasestring=$string.ToLower()
+    $length=$lowercasestring.length
+    $noalphastring = $lowercasestring -replace '[a-z0-9/\;:|.]'
+    $nobinarystring = $lowercasestring -replace '[01]' # To catch binary encoding
+    # Calculate the percent alphanumeric/common symbols
+    if ($length -gt 0){
+        $percent=(($length-$noalphastring.length)/$length)    
+        # Adjust minpercent for very short commands, to avoid triggering short warnings
+        if (($length/100) -lt $minpercent){ 
+            $minpercent=($length/100) 
+        }
+        if ($percent -lt $minpercent){
+            $percent = '{0:P0}' -f $percent      # Convert to a percent
+            $obfutext += "Possible command obfuscation: only $percent alphanumeric and common symbols`n"
+        }
+        # Calculate the percent of binary characters  
+        $percent=(($nobinarystring.length-$length/$length)/$length)
+        $binarypercent = 1-$percent
+        if ($binarypercent -gt $maxbinary){
+            #$binarypercent = 1-$percent
+            $binarypercent = '{0:P0}' -f $binarypercent      # Convert to a percent
+            $obfutext += "Possible command obfuscation: $binarypercent zeroes and ones (possible numeric or binary encoding)`n"
+        }
+    }
+    $obfutext
+}
+
+function Check-Creator($command,$creator){
+    $creatortext=''  # Local variable for return output
+    if ($creator){
+        if ($command -Match 'powershell'){
+            if ($creator -Match 'PSEXESVC'){
+                $creatortext += "PowerShell launched via PsExec: $creator`n"
+            }
+            ElseIf($creator -Match 'WmiPrvSE'){
+                $creatortext += "PowerShell launched via WMI: $creator`n"
+            }
+        }
+    }
+    $creatortext
+}
+
+function Remove-Spaces($string){
+    # Changes this:   Application       : C:\Program Files (x86)\Internet Explorer\iexplore.exe
+    #      to this: Application: C:\Program Files (x86)\Internet Explorer\iexplore.exe
+    $string = $string.trim() -Replace '\s+:',':'
+    $string
+}
+
+#endregion
+
+#region init variables
     # Set up the global variables
     $text='' # Temporary scratch pad variable to hold output text
     $minlength=1000 # Minimum length of command line to alert
@@ -113,8 +329,12 @@ function Main {
     # Check for unsigned EXEs/DLLs. This can be very chatty, so it's disabled. 
     # Set $checkunsigned to 1 to enable:
     $checkunsigned = 0
-    #
-    # Get the events:
+#endregion
+
+}
+Process {
+
+
     try {
         $HT = @{ FilterHashtable = $filter }
         $events = Get-WinEvent @HT -ErrorAction Stop
@@ -535,221 +755,7 @@ function Main {
         $obj.Results+= "Total logon failures: $totalfailedlogons`n"
         Write-Output $obj
     }
-} 
 
-function Check-Options($file, $log)
-{
-    $log_error='Unknown and/or unsupported log type'
-    $logname=''
-    # Checks the command line options, return logname to parse
-    if($file -eq ''){ # No filename provided, parse local logs
-        if(($log -eq '') -or ($log -eq 'Security')){ # Parse the security log if no log was selected
-            $logname='Security'
-        } ElseIf ($log -eq 'System'){
-            $logname='System'
-        } ElseIf ($log -eq 'Application'){
-            $logname='Application'
-        } ElseIf ($log -eq 'Sysmon'){
-            $logname='Sysmon'
-        } ElseIf ($log -eq 'Powershell'){
-            $logname='Powershell'
-        } Else{
-            write-host $log_error
-        }    
-    } else { # Filename provided, check if it exists:
-        if (Test-Path -Path $file -PathType Leaf){ # File exists. Todo: verify it is an evtx file. 
-            # Get-WinEvent will generate this error for non-evtx files: "...file does not appear to be a valid log file. 
-            # Specify only .evtx, .etl, or .evt filesas values of the Path parameter."
-            #
-            # Check the LogName of the first event
-            try {
-                $event = Get-WinEvent -Path $file -MaxEvents 1 -ErrorAction Stop
-            } catch {
-                Write-Verbose "Get-WinEvent cannot read $($file) because $($_.Exception.Message)"
-            }
-            switch ($event.LogName){
-                'Security'    {$logname='Security'}
-                'System'      {$logname='System'}
-                'Application' {$logname='Application'}
-                'Microsoft-Windows-AppLocker/EXE and DLL'   {$logname='Applocker'}
-                'Microsoft-Windows-PowerShell/Operational'   {$logname='Powershell'}
-                'Microsoft-Windows-Sysmon/Operational'   {$logname='Sysmon'}
-                default {
-                    'Logic error 3, should not reach here...';#Exit 1
-                }
-            }
-        } else{ # Filename does not exist, exit
-            Write-host 'Error: no such file. Exiting...'
-            # exit 1
-        }
-    }
-    $logname
 }
-
-function Create-Filter($file, $logname)
-{
-    # Return the Get-Winevent filter 
-    #
-    $sys_events= @('7030','7036','7045','7040')
-    $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648')
-    $app_events=@('2')
-    $applocker_events=@('8003','8004','8006','8007')
-    $powershell_events=@('4103','4104')
-    $sysmon_events=@('1','7')
-    if ($file){
-        switch ($logname){
-            'Security'    {$filter=@{path="$($file)";ID=$sec_events}}
-            'System'      {$filter=@{path="$($file)";ID=$sys_events}}
-            'Application' {$filter=@{path="$($file)";ID=$app_events}}
-            'Applocker'   {$filter=@{path="$($file)";ID=$applocker_events}}
-            'Powershell'  {$filter=@{path="$($file)";ID=$powershell_events}}
-            'Sysmon'      {$filter=@{path="$($file)";ID=$sysmon_events}}
-            default       {
-                'Logic error 1, should not reach here...'
-            }
-        }
-    }
-    else{
-        switch ($logname){
-            'Security'    {$filter=@{Logname='Security';ID=$sec_events}}
-            'System'      {$filter=@{Logname='System';ID=$sys_events}}
-            'Application' {$filter=@{Logname='Application';ID=$app_events}}
-            'Applocker'   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL';ID=$applocker_events}}
-            'Powershell'  {$filter=@{logname='Microsoft-Windows-PowerShell/Operational';ID=$powershell_events}}
-            'Sysmon'      {$filter=@{logname='Microsoft-Windows-Sysmon/Operational';ID=$sysmon_events}}
-            default       {
-                'Logic error 2, should not reach here...'
-            }
-        }
-    }
-    $filter
-}
-
-
-function Check-Command(){
-    $text=''
-    $base64=''
-    # Check to see if command is whitelisted
-    foreach ($entry in $whitelist) {
-        if ($commandline -Match $entry.regex) {
-            # Command is whitelisted, return nothing
-            return
-        }
-    }
-    if ($commandline.length -gt $minlength){
-        $text += "Long Command Line: greater than $minlength bytes`n"
-    }
-    $text += (Check-Obfu $commandline)
-    $text += (Check-Regex $commandline 0)
-    $text += (Check-Creator $commandline $creator)
-    # Check for base64 encoded function, decode and print if found
-    # This section is highly use case specific, other methods of base64 encoding and/or compressing may evade these checks
-    if ($commandline -Match "\-enc.*[A-Za-z0-9/+=]{100}"){
-        $base64= $commandline -Replace '^.* \-Enc(odedCommand)? ',''
-    }
-    ElseIf ($commandline -Match ':FromBase64String\('){
-        $base64 = $commandline -Replace "^.*:FromBase64String\(\'*",''
-        $base64 = $base64 -Replace "\'.*$",''
-    }
-    if ($base64){
-        if ($commandline -Match 'Compression.GzipStream.*Decompress'){
-            # Metasploit-style compressed and base64-encoded function. Uncompress it.
-            $decoded=New-Object IO.MemoryStream(,[Convert]::FromBase64String($base64))
-            $uncompressed=(New-Object IO.StreamReader(((New-Object IO.Compression.GzipStream($decoded,[IO.Compression.CompressionMode]::Decompress))),[Text.Encoding]::ASCII)).ReadToEnd()
-            $obj.Decoded=$uncompressed
-            $text += 'Base64-encoded and compressed function`n'
-        }
-        else{
-            $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
-            $obj.Decoded=$decoded
-            $text += 'Base64-encoded function`n'
-            $text += (Check-Obfu $decoded)
-            $text += (Check-Regex $decoded 0)
-        }
-    }
-    if ($text){
-        if ($servicecmd){
-            $obj.Message = 'Suspicious Service Command'
-            $obj.Results = "Service name: $servicename`n"
-        }
-        Else{
-            $obj.Message = 'Suspicious Command Line'
-        }
-        $obj.Command = $commandline
-        $obj.Results += $text
-        Write-Output $obj
-    }
-    return
-}    
-
-function Check-Regex($string,$type){
-    $regextext='' # Local variable for return output
-    foreach ($regex in $regexes){
-        if ($regex.Type -eq $type) { # Type is 0 for Commands, 1 for services. Set in regexes.csv
-            if ($string -Match $regex.regex) {
-               $regextext += $regex.String + "`n"
-            }
-        }
-    }
-    #if ($regextext){ 
-    #   $regextext = $regextext.Substring(0,$regextext.Length-1) # Remove final newline.
-    #}
-    $regextext
-}
-
-function Check-Obfu($string){
-    # Check for special characters in the command. Inspired by Invoke-Obfuscation: https://twitter.com/danielhbohannon/status/778268820242825216
-    #
-    $obfutext=''       # Local variable for return output
-    $lowercasestring=$string.ToLower()
-    $length=$lowercasestring.length
-    $noalphastring = $lowercasestring -replace '[a-z0-9/\;:|.]'
-    $nobinarystring = $lowercasestring -replace '[01]' # To catch binary encoding
-    # Calculate the percent alphanumeric/common symbols
-    if ($length -gt 0){
-        $percent=(($length-$noalphastring.length)/$length)    
-        # Adjust minpercent for very short commands, to avoid triggering short warnings
-        if (($length/100) -lt $minpercent){ 
-            $minpercent=($length/100) 
-        }
-        if ($percent -lt $minpercent){
-            $percent = '{0:P0}' -f $percent      # Convert to a percent
-            $obfutext += "Possible command obfuscation: only $percent alphanumeric and common symbols`n"
-        }
-        # Calculate the percent of binary characters  
-        $percent=(($nobinarystring.length-$length/$length)/$length)
-        $binarypercent = 1-$percent
-        if ($binarypercent -gt $maxbinary){
-            #$binarypercent = 1-$percent
-            $binarypercent = '{0:P0}' -f $binarypercent      # Convert to a percent
-            $obfutext += "Possible command obfuscation: $binarypercent zeroes and ones (possible numeric or binary encoding)`n"
-        }
-    }
-    $obfutext
-}
-
-function Check-Creator($command,$creator){
-    $creatortext=''  # Local variable for return output
-    if ($creator){
-        if ($command -Match 'powershell'){
-            if ($creator -Match 'PSEXESVC'){
-                $creatortext += "PowerShell launched via PsExec: $creator`n"
-            }
-            ElseIf($creator -Match 'WmiPrvSE'){
-                $creatortext += "PowerShell launched via WMI: $creator`n"
-            }
-        }
-    }
-    $creatortext
-}
-
-function Remove-Spaces($string){
-    # Changes this:   Application       : C:\Program Files (x86)\Internet Explorer\iexplore.exe
-    #      to this: Application: C:\Program Files (x86)\Internet Explorer\iexplore.exe
-    $string = $string.trim() -Replace '\s+:',':'
-    $string
-}
-
-. Main
-
+End {}
 }
