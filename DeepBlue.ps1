@@ -288,13 +288,6 @@ function Check-Creator($command,$creator) {
     $creatortext
 }
 
-function Remove-Spaces($string) {
-    # Changes this:   Application       : C:\Program Files (x86)\Internet Explorer\iexplore.exe
-    #      to this: Application: C:\Program Files (x86)\Internet Explorer\iexplore.exe
-    $string = $string.trim() -Replace '\s+:',':'
-    $string
-}
-
 #endregion
 
 #region init variables
@@ -649,9 +642,9 @@ Process {
                     #  Address       : 0x6FBA7512, pull out relevant parts
                     $array = $event.message -split '\n' # Split each line of the message into an array
                     $text = $array[0]
-                    $application = Remove-Spaces($array[3])
+                    $application = ($array[3]).trim() -Replace '\s+:',':'
                     $command= $application -Replace '^Application: ',''
-                    $username = Remove-Spaces($array[4])
+                    $username = ($array[4]).trim() -Replace '\s+:',':'
                     $obj.Message='EMET Block'
                     $obj.Command = "$command"
                     $obj.Results = "$text`n"
