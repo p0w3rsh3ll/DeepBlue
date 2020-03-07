@@ -737,17 +737,15 @@ $user
                     '8003' {
                         # ...was allowed to run but would have been prevented from running if the AppLocker policy were enforced.
                         $o.Message = 'Applocker Warning'
-                        $command = $e.message -Replace ' was .*$',''
-                        $o.Command = $command
+                        $o.Command = "$($e.message -Replace ' was .*$','')"
                         $o.Results = $e.message
                         $o
                         break
                     }
                     '8004' {
-                        $o.Message = 'Applocker Block'
                         # ...was prevented from running.
-                        $command = $e.message -Replace ' was .*$',''
-                        $o.Command = $command
+                        $o.Message = 'Applocker Block'
+                        $o.Command = "$($e.message -Replace ' was .*$','')"
                         $o.Results = $e.message
                         $o
                         break
@@ -829,11 +827,9 @@ $user
                         if ($checkunsigned) {
                             if ($xml.Event.EventData.Data[6].'#text' -eq 'false') {
                                 $o.Message = 'Unsigned Image (DLL)'
-                                $image = $xml.Event.EventData.Data[3].'#text'
-                                $imageload = $xml.Event.EventData.Data[4].'#text'
-                                # $hash=$xml.Event.EventData.Data[5].'#text'
-                                $o.Command = $imageload
-                                $o.Results = "Loaded by: $image"
+                                # $hash = $xml.Event.EventData.Data[5].'#text'
+                                $o.Command = "$($xml.Event.EventData.Data[4].'#text')"
+                                $o.Results = "Loaded by: $($xml.Event.EventData.Data[3].'#text')"
                                 $o
                              }
                          }
