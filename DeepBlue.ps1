@@ -158,7 +158,7 @@ Process {
     if ($CommandLine.length -gt $minlength) {
         $text += "Long Command Line: greater than $minlength bytes`n"
     }
-    $text += (Check-Obfu $CommandLine)
+    $text += (Check-Obfuscation -String $CommandLine)
     $text += (Check-Regex -String $CommandLine -Type 0)
     $text += (Check-Creator $CommandLine $creator)
     # Check for base64 encoded function, decode and print if found
@@ -185,7 +185,7 @@ Process {
             $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
             $obj.Decoded = $decoded
             $text += 'Base64-encoded function`n'
-            $text += (Check-Obfu $decoded)
+            $text += (Check-Obfuscation -String $decoded)
             $text += (Check-Regex -String $decoded -Type 0)
         }
     }
@@ -233,10 +233,18 @@ Process {
 End {}
 }
 
-function Check-Obfu($string) {
+Function Check-Obfuscation {
+[CmdletBinding()]
+Param(
+[Parameter(Mandatory)]
+[string]$string
+)
+Begin {
     # Check for special characters in the command. Inspired by Invoke-Obfuscation: https://twitter.com/danielhbohannon/status/778268820242825216
     #
     $obfutext=''       # Local variable for return output
+}
+Process {
     $lowercasestring=$string.ToLower()
     $length=$lowercasestring.length
     $noalphastring = $lowercasestring -replace '[a-z0-9/\;:|.]'
@@ -262,6 +270,8 @@ function Check-Obfu($string) {
         }
     }
     $obfutext
+}
+End {}
 }
 
 function Check-Creator($command,$creator) {
