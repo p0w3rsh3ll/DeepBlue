@@ -44,7 +44,20 @@ Param(
 [Parameter(ParameterSetName='ByLogName')]
 [ValidateSet('Security','System','Application','Applocker','PowerShell','Sysmon')]
 [Alias('LogName')]
-[string]$Log='Security'
+[string]$Log='Security',
+
+# Passworg guessing/spraying variables:
+$MaxFailedLogons = 5,  # Alert after this many failed logons
+$MaxAdminLogons = 10,  # Alert after this many admin logons
+$MaxTotalSensPrivUse = 4,
+[switch]$AlertAllAdmin, # To alert every admin logon
+# Sysmon: Check for unsigned EXEs/DLLs. This can be very chatty..
+[switch]$CheckUnsigned,
+$PassSprayUniqUserMax = 6,
+$PassSprayLoginMax = 6,
+# Obfuscation variables:
+$MinPercent = .65, # minimum percentage of alphanumeric and common symbols
+$MaxBinary = .50   # Maximum percentage of zeros and ones to detect binary encoding
 )           
 Begin {
 
@@ -345,31 +358,23 @@ End {}
         [PSCustomObject]$_
     }
 
-    # Passworg guessing/spraying variables:
-    $maxfailedlogons = 5 # Alert after this many failed logons
-    $failedlogons = @{}   # HashTable of failed logons per user
+
+
+    $failedlogons = @{} # HashTable of failed logons per user
     $totalfailedlogons = 0 # Total number of failed logons (for all accounts)
     $totalfailedaccounts = 0 # Total number of accounts with a failed logon
     # Track total Sensitive Privilege Use occurrences
     $totalsensprivuse = 0
-    $maxtotalsensprivuse = 4
+
     # Admin logon variables:
-    $totaladminlogons = 0  # Total number of logons with SeDebugPrivilege
-    $maxadminlogons = 10   # Alert after this many admin logons
-    $adminlogons = @{}     # HashTable of admin logons
+    $totaladminlogons = 0 # Total number of logons with SeDebugPrivilege
+
+    $adminlogons = @{} # HashTable of admin logons
     $multipleadminlogons = @{} #Hashtable to track multiple admin logons per account
-    $alert_all_admin = 0   # Set to 1 to alert every admin logon (set to 0 disable this)
-    # Obfuscation variables:
-    $minpercent = .65  # minimum percentage of alphanumeric and common symbols
-    $maxbinary = .50   # Maximum percentage of zeros and ones to detect binary encoding
+
     # Password spray variables:
     $passspraytrack = @{}
-    $passsprayuniqusermax = 6
-    $passsprayloginmax = 6
-    # Sysmon variables:
-    # Check for unsigned EXEs/DLLs. This can be very chatty, so it's disabled. 
-    # Set $checkunsigned to 1 to enable:
-    $checkunsigned = 0
+
 #endregion
 
 }
@@ -434,7 +439,7 @@ Process {
                         # Admin account with SeDebugPrivilege
                         if ($privileges -Match 'SeDebugPrivilege') { 
                             # Alert for every admin logon
-                            if ($alert_all_admin) { 
+                            if ($AlertAllAdmin) { 
                                 $o.Message = 'Logon with SeDebugPrivilege (admin access)' 
                                 $o.Results = @"
 Username: $user
@@ -445,7 +450,7 @@ Privileges: $privileges
                                 $o
                             }
                             # Track User SIDs used during admin logons (can track one account logging into multiple systems)
-                            $totaladminlogons += 1
+                            $totaladminlogons++
                             if ($adminlogons.ContainsKey($user)) { 
                                 $string = $adminlogons.$user
                                 if (-Not ($string -Match $SID)) { 
@@ -542,20 +547,20 @@ User SID: $SID
                         # An account failed to log on.
                         # Requires auditing logon failures
                         # https://technet.microsoft.com/en-us/library/cc976395.aspx
-                        $totalfailedlogons += 1
+                        $totalfailedlogons++
                         $user = $xml.Event.EventData.Data[5].'#text'
                         if($failedlogons.ContainsKey($user)) {
                             $count = $failedlogons.Get_Item($user)
                             $failedlogons.Set_Item($user,$count+1)
                         } else {
                             $failedlogons.Set_Item($user,1)
-                            $totalfailedaccounts += 1   
+                            $totalfailedaccounts++   
                         }
                         break
                     }
                     '4673' {
                         # Sensitive Privilege Use (Mimikatz)
-                        $totalsensprivuse += 1
+                        $totalsensprivuse++
                         # use -eq here to avoid multiple log notices
                         if ($totalsensprivuse -eq $maxtotalsensprivuse) {
                             $user = $xml.Event.EventData.Data[1].'#text'
@@ -583,7 +588,8 @@ Domain Name: $( $xml.Event.EventData.Data[2].'#text')
                         if ($null -eq $passspraytrack[$targetusername]) {
                             $passspraytrack[$targetusername] = 1
                         } else {
-                            $passspraytrack[$targetusername] += 1
+                            # $passspraytrack[$targetusername] += 1
+                            $passspraytrack[$targetusername]++
                         }
                         if ($passspraytrack[$targetusername] -gt $passsprayloginmax) {
                             # This user account has exceedd the threshoold for explicit logins. Identify the total number
@@ -591,7 +597,8 @@ Domain Name: $( $xml.Event.EventData.Data[2].'#text')
                             $passsprayuniquser = 0
                             foreach($k in $passspraytrack.keys) {
                                 if ($passspraytrack[$k] -gt $passsprayloginmax) { 
-                                    $passsprayuniquser += 1
+                                    # $passsprayuniquser += 1
+                                    $passsprayuniquser++
                                 }
                             }
                             if ($passsprayuniquser -gt $passsprayuniqusermax) {
