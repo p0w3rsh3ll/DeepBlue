@@ -159,7 +159,7 @@ Process {
         $text += "Long Command Line: greater than $minlength bytes`n"
     }
     $text += (Check-Obfu $CommandLine)
-    $text += (Check-Regex $CommandLine 0)
+    $text += (Check-Regex -String $CommandLine -Type 0)
     $text += (Check-Creator $CommandLine $creator)
     # Check for base64 encoded function, decode and print if found
     # This section is highly use case specific, other methods of base64 encoding and/or compressing may evade these checks
@@ -186,7 +186,7 @@ Process {
             $obj.Decoded = $decoded
             $text += 'Base64-encoded function`n'
             $text += (Check-Obfu $decoded)
-            $text += (Check-Regex $decoded 0)
+            $text += (Check-Regex -String $decoded -Type 0)
         }
     }
     if ($text) {
@@ -204,10 +204,22 @@ Process {
 End {}
 }    
 
-function Check-Regex($string,$type) {
-    $regextext='' # Local variable for return output
+Function Check-Regex {
+[CmdletBinding()]
+Param (
+[Parameter(Mandatory)]
+[string]$String,
+
+[Parameter(Mandatory)]
+[ValidateRange(0,1)]
+[int]$Type  # Type is 0 for Commands, 1 for services. Set in regexes.csv
+)
+Begin {
+    $regextext = '' # Local variable for return output
+}
+Process {
     foreach ($regex in $regexes) {
-        if ($regex.Type -eq $type) { # Type is 0 for Commands, 1 for services. Set in regexes.csv
+        if ($regex.Type -eq $type) {
             if ($string -Match $regex.regex) {
                $regextext += $regex.String + "`n"
             }
@@ -217,6 +229,8 @@ function Check-Regex($string,$type) {
     #   $regextext = $regextext.Substring(0,$regextext.Length-1) # Remove final newline.
     #}
     $regextext
+}
+End {}
 }
 
 function Check-Obfu($string) {
@@ -555,7 +569,7 @@ Process {
                 $servicename=$eventXML.Event.EventData.Data[0].'#text'
                 $commandline=$eventXML.Event.EventData.Data[1].'#text'
                 # Check for suspicious service name
-                $text = (Check-Regex $servicename 1)
+                $text = (Check-Regex -String $servicename -Type 1)
                 if ($text) {
                     $obj.Message = 'New Service Created'
                     $obj.Command = $commandline
@@ -577,12 +591,12 @@ Process {
                 $obj.Results += 'Malware (and some third party software) trigger this warning'
                 # Check for suspicious service name
                 $servicecmd=1 # CLIs via service creation get extra check
-                $obj.Results += (Check-Regex $servicename 1)
+                $obj.Results += (Check-Regex -String $servicename -Type 1)
                 $obj
             } elseif ($event.id -eq 7036) {
                 # The ... service entered the stopped|running state.
                 $servicename=$eventXML.Event.EventData.Data[0].'#text'
-                $text = (Check-Regex $servicename 1)
+                $text = (Check-Regex -String $servicename -Type 1)
                 if ($text) {
                     $obj.Message = 'Suspicious Service Name'
                     $obj.Results = "Service name: $servicename`n"
