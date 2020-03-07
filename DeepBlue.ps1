@@ -141,7 +141,7 @@ Param(
 [Parameter(Mandatory)]
 [string]$CommandLine
 # The following variables are created outside of the scope of this function:
-# obj, whitelist, servicecmd,# servicename
+# obj now is o, whitelist, servicecmd,# servicename
 )
 Begin {
     $text=''
@@ -179,11 +179,11 @@ Process {
                 [Text.Encoding]::ASCII
                 )
             ).ReadToEnd()
-            $obj.Decoded = $uncompressed
+            $o.Decoded = $uncompressed
             $text += 'Base64-encoded and compressed function`n'
         } else {
             $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
-            $obj.Decoded = $decoded
+            $o.Decoded = $decoded
             $text += 'Base64-encoded function`n'
             $text += (Check-Obfuscation -String $decoded)
             $text += (Check-Regex -String $decoded -Type 0)
@@ -191,14 +191,14 @@ Process {
     }
     if ($text) {
         if ($servicecmd) {
-            $obj.Message = 'Suspicious Service Command'
-            $obj.Results = "Service name: $servicename`n"
+            $o.Message = 'Suspicious Service Command'
+            $o.Results = "Service name: $servicename`n"
         } else {
-            $obj.Message = 'Suspicious Command Line'
+            $o.Message = 'Suspicious Command Line'
         }
-        $obj.Command = $commandline
-        $obj.Results += $text
-        $obj
+        $o.Command = $commandline
+        $o.Results += $text
+        $o
     }
 }
 End {}
@@ -397,65 +397,67 @@ Process {
     	Write-Host "Get-WinEvent error: " $_.Exception.Message "`n"
     }
 
-    ForEach ($event in $events) {
+    ForEach ($e in $events) {
 
         # Prepare a custom reporting object:
-        $obj = [PSCustomObject]@{
-            Date    = $event.TimeCreated
+        $o = [PSCustomObject]@{
+            Date    = $e.TimeCreated
             Log     = $logname
-            EventID = $event.id
+            EventID = $e.id
             Message = ''
             Results = ''
             Command = ''
             Decoded = ''
         }
                
-        $eventXML = [xml]$event.ToXml()
+        $xml = [xml]$e.ToXml()
 
         $servicecmd = 0 # CLIs via service creation get extra checks, this defaults to 0 (no extra checks)
         
         Switch ($logname) {
             'Security' {
-                Switch ($event.id) {
+                Switch ($e.id) {
                     '4688' {
                         # A new process has been created. (Command Line Logging)
-                        $commandline=$eventXML.Event.EventData.Data[8].'#text' # Process Command Line
-                        $creator=$eventXML.Event.EventData.Data[13].'#text'    # Creator Process Name
-                        if ($commandline) {
-                            Check-Command -CommandLine $commandline
+                        $c = $xml.Event.EventData.Data[8].'#text'        # Process Command Line
+                        $creator = $xml.Event.EventData.Data[13].'#text' # Creator Process Name
+                        if ($c) {
+                            Check-Command -CommandLine $c
                         }
                         break
                     }
                     '4672' {
                         # Special privileges assigned to new logon (possible admin access)
-                        $username=$eventXML.Event.EventData.Data[1].'#text'
-                        $domain=$eventXML.Event.EventData.Data[2].'#text'
-                        $securityid=$eventXML.Event.EventData.Data[3].'#text'
-                        $privileges=$eventXML.Event.EventData.Data[4].'#text'
+                        $user = $xml.Event.EventData.Data[1].'#text'
+                        $SID = $xml.Event.EventData.Data[3].'#text'
+                        $privileges = $xml.Event.EventData.Data[4].'#text'
                         if ($privileges -Match 'SeDebugPrivilege') { #Admin account with SeDebugPrivilege
                             if ($alert_all_admin) { # Alert for every admin logon
-                                $obj.Message = 'Logon with SeDebugPrivilege (admin access)' 
-                                $obj.Results = "Username: $username`n"
-                                $obj.Results += "Domain: $domain`n"
-                                $obj.Results += "User SID: $securityid`n"
-                                $obj.Results += "Privileges: $privileges"
-                                $obj
+                                $o.Message = 'Logon with SeDebugPrivilege (admin access)' 
+                                $o.Results = @"
+Username: $user
+Domain: $($xml.Event.EventData.Data[2].'#text')
+User SID: $SID
+Privileges: $privileges
+"@
+                                $o
                             }
                             # Track User SIDs used during admin logons (can track one account logging into multiple systems)
-                            $totaladminlogons+=1
-                            if($adminlogons.ContainsKey($username)) { 
-                                $string=$adminlogons.$username
-                                if (-Not ($string -Match $securityid)) { # One username with multiple admin logon SIDs 
-                                    $multipleadminlogons.Set_Item($username,1)
-                                    $string+=" $securityid"
-                                    $adminlogons.Set_Item($username,$string)
+                            $totaladminlogons += 1
+                            if ($adminlogons.ContainsKey($user)) { 
+                                $string = $adminlogons.$user
+                                if (-Not ($string -Match $SID)) { 
+                                    # One username with multiple admin logon SIDs 
+                                    $multipleadminlogons.Set_Item($user,1)
+                                    $string += " $SID"
+                                    $adminlogons.Set_Item($user,$string)
                                 }
                             } else {
-                                $adminlogons.add($username,$securityid) 
-                                #$adminlogons.$username=$securityid
+                                $adminlogons.add($user,$SID) 
+                                #$adminlogons.$user = $SID
                             }
-                            #$adminlogons.Set_Item($username,$securitysid)
-                            #$adminlogons($username)+=($securitysid)
+                            #$adminlogons.Set_Item($user,$securitysid)
+                            #$adminlogons($user)+=($securitysid)
                         }
     <#
                         # This unique privilege list is used by Mimikatz 2.2.0
@@ -472,13 +474,13 @@ Process {
         #                        -And $privileges -Match 'SeSystemEnvironmentPrivilege' `
         #                        -And $privileges -Match 'SeImpersonatePrivilege' `
         #                        -And $privileges -Match 'SeDelegateSessionUserImpersonatePrivilege') {
-        #                    $obj.Message = 'Mimikatz token::elevate Privilege Use' 
-        #                    $obj.Results = "Username: $username`n"
-        #                    $obj.Results += "Domain: $domain`n"
-        #                    $obj.Results += "User SID: $securityid`n"
+        #                    $o.Message = 'Mimikatz token::elevate Privilege Use' 
+        #                    $o.Results = "Username: $user`n"
+        #                    $o.Results += "Domain: $domain`n"
+        #                    $o.Results += "User SID: $SID`n"
         #                    $pprivileges = $privileges -replace "`n",", " -replace "\s+"," "
-        #                    $obj.Results += "Privileges: $pprivileges"
-        #                    Write-Output($obj)
+        #                    $o.Results += "Privileges: $pprivileges"
+        #                    Write-Output($o)
         #                }
                         # This unique privilege list is used by Metasploit exploit/windows/smb/psexec (v5.0.4 tested)
         #               # Disabling due to false-positive with MS Exchange Server
@@ -491,43 +493,46 @@ Process {
         #                        -And $privileges -Match 'SeLoadDriverPrivilege' `
         #                        -And $privileges -Match 'SeImpersonatePrivilege' `
         #                        -And $privileges -Match 'SeDelegateSessionUserImpersonatePrivilege') {
-        #                    $obj.Message = 'Metasploit psexec Privilege Use' 
-        #                    $obj.Results = "Username: $username`n"
-        #                    $obj.Results += "Domain: $domain`n"
-        #                    $obj.Results += "User SID: $securityid`n"
+        #                    $o.Message = 'Metasploit psexec Privilege Use' 
+        #                    $o.Results = "Username: $user`n"
+        #                    $o.Results += "Domain: $domain`n"
+        #                    $o.Results += "User SID: $SID`n"
         #                    $pprivileges = $privileges -replace "`n",", " -replace "\s+"," "
-        #                    $obj.Results += "Privileges: $pprivileges"
-        #                    Write-Output($obj)
+        #                    $o.Results += "Privileges: $pprivileges"
+        #                    Write-Output($o)
         #                }
     #>
-                # } elseif ($event.id -eq 4720) {
                         break
                     }
                     '4720' {
                         # A user account was created.
-                        $username=$eventXML.Event.EventData.Data[0].'#text'
-                        $securityid=$eventXML.Event.EventData.Data[2].'#text'
-                        $obj.Message = 'New User Created' 
-                        $obj.Results = "Username: $username`n"
-                        $obj.Results += "User SID: $securityid`n"
-                        $obj
+                        $user = $xml.Event.EventData.Data[0].'#text'
+                        $SID = $xml.Event.EventData.Data[2].'#text'
+                        $o.Message = 'New User Created' 
+                        $o.Results = @"
+Username: $user
+User SID: $SID
+"@
+                        $o
                         break
                     }
                     {$_ -in @('4728','4732','4756')} {
                         # A member was added to a security-enabled (global|local|universal) group.
-                        $groupname=$eventXML.Event.EventData.Data[2].'#text'
+                        $groupname = $xml.Event.EventData.Data[2].'#text'
                         # Check if group is Administrators, may later expand to all groups
                         if ($groupname -eq 'Administrators') {    
-                            $username=$eventXML.Event.EventData.Data[0].'#text'
-                            $securityid=$eventXML.Event.EventData.Data[1].'#text'
+                            $user = $xml.Event.EventData.Data[0].'#text'
+                            $SID = $xml.Event.EventData.Data[1].'#text'
                             switch ($event.id) {
-                                4728 {$obj.Message = "User added to global $groupname group"}
-                                4732 {$obj.Message = "User added to local $groupname group"}
-                                4756 {$obj.Message = "User added to universal $groupname group"}
+                                4728 {$o.Message = "User added to global $groupname group"}
+                                4732 {$o.Message = "User added to local $groupname group"}
+                                4756 {$o.Message = "User added to universal $groupname group"}
                             }
-                            $obj.Results = "Username: $username`n"
-                            $obj.Results += "User SID: $securityid`n"
-                            $obj
+                            $o.Results = @"
+Username: $user
+User SID: $SID
+"@
+                            $o
                         }
                         break
                     }
@@ -535,45 +540,45 @@ Process {
                         # An account failed to log on.
                         # Requires auditing logon failures
                         # https://technet.microsoft.com/en-us/library/cc976395.aspx
-                        $totalfailedlogons+=1
-                        $username=$eventXML.Event.EventData.Data[5].'#text'
-                        if($failedlogons.ContainsKey($username)) {
-                            $count=$failedlogons.Get_Item($username)
-                            $failedlogons.Set_Item($username,$count+1)
+                        $totalfailedlogons += 1
+                        $user = $xml.Event.EventData.Data[5].'#text'
+                        if($failedlogons.ContainsKey($user)) {
+                            $count = $failedlogons.Get_Item($user)
+                            $failedlogons.Set_Item($user,$count+1)
                         } else {
-                            $failedlogons.Set_Item($username,1)
-                            $totalfailedaccounts+=1   
+                            $failedlogons.Set_Item($user,1)
+                            $totalfailedaccounts += 1   
                         }
                         break
                     }
                     '4673' {
                         # Sensitive Privilege Use (Mimikatz)
-                        $totalsensprivuse+=1
+                        $totalsensprivuse += 1
                         # use -eq here to avoid multiple log notices
                         if ($totalsensprivuse -eq $maxtotalsensprivuse) {
-                            $obj.Message = 'Sensititive Privilege Use Exceeds Threshold'
-                            $obj.Results = 'Potentially indicative of Mimikatz, multiple sensitive privilege calls have been made.`n'
+                            $user = $xml.Event.EventData.Data[1].'#text'
 
-                            $username=$eventXML.Event.EventData.Data[1].'#text'
-                            $domainname=$eventXML.Event.EventData.Data[2].'#text'
-
-                            $obj.Results += "Username: $username`n"
-                            $obj.Results += "Domain Name: $domainname`n"
-                            $obj
+                            $o.Message = 'Sensititive Privilege Use Exceeds Threshold'
+                            $o.Results = @"
+Potentially indicative of Mimikatz, multiple sensitive privilege calls have been made.
+Username: $user
+Domain Name: $( $xml.Event.EventData.Data[2].'#text')
+"@
+                            $o
                         }
                         break
                     }
                     '4648' {
                         # A logon was attempted using explicit credentials.
-                        $username=$eventXML.Event.EventData.Data[1].'#text'
-                        $hostname=$eventXML.Event.EventData.Data[2].'#text'
-                        $targetusername=$eventXML.Event.EventData.Data[5].'#text'
-                        $sourceip=$eventXML.Event.EventData.Data[12].'#text'
+                        $user = $xml.Event.EventData.Data[1].'#text'
+                        $hostname = $xml.Event.EventData.Data[2].'#text'
+                        $targetusername = $xml.Event.EventData.Data[5].'#text'
+                        $sourceip = $xml.Event.EventData.Data[12].'#text'
 
                         # For each #4648 event, increment a counter in $passspraytrack. If that counter exceeds 
                         # $passsprayloginmax, then check for $passsprayuniqusermax also exceeding threshold and raise
                         # a notice.
-                        if ($passspraytrack[$targetusername] -eq $null) {
+                        if ($null -eq $passspraytrack[$targetusername]) {
                             $passspraytrack[$targetusername] = 1
                         } else {
                             $passspraytrack[$targetusername] += 1
@@ -581,25 +586,27 @@ Process {
                         if ($passspraytrack[$targetusername] -gt $passsprayloginmax) {
                             # This user account has exceedd the threshoold for explicit logins. Identify the total number
                             # of accounts that also have similar explicit login patterns.
-                            $passsprayuniquser=0
-                            foreach($key in $passspraytrack.keys) {
-                                if ($passspraytrack[$key] -gt $passsprayloginmax) { 
-                                    $passsprayuniquser+=1
+                            $passsprayuniquser = 0
+                            foreach($k in $passspraytrack.keys) {
+                                if ($passspraytrack[$k] -gt $passsprayloginmax) { 
+                                    $passsprayuniquser += 1
                                 }
                             }
                             if ($passsprayuniquser -gt $passsprayuniqusermax) {
-                                $usernames=''
-                                foreach($key in $passspraytrack.keys) {
-                                    $usernames += $key
-                                    $usernames += ' '
+                                $users = ''
+                                foreach($k in $passspraytrack.keys) {
+                                    $users += $k
+                                    $users += ' '
                                 }
-                                $obj.Message = 'Distributed Account Explicit Credential Use (Password Spray Attack)'
-                                $obj.Results = 'The use of multiple user account access attempts with explicit credentials is '
-                                $obj.Results += 'an indicator of a password spray attack.`n'
-                                $obj.Results += "Target Usernames: $usernames`n"
-                                $obj.Results += "Accessing Username: $username`n"
-                                $obj.Results += "Accessing Host Name: $hostname`n"
-                                $obj
+                                $o.Message = 'Distributed Account Explicit Credential Use (Password Spray Attack)'
+                                $o.Results = @"
+The use of multiple user account access attempts with explicit credentials is
+an indicator of a password spray attack.
+Target Usernames: $users
+Accessing Username: $user
+Accessing Host Name: $hostname
+"@
+                                $o
                                 $passspraytrack = @{} # Reset
                             }
                         }
@@ -610,67 +617,75 @@ Process {
                 break
             }
             'System' {
-                switch ($event.id) {
+                switch ($e.id) {
                     '7045' {
                         # A service was installed in the system.
-                        $servicename=$eventXML.Event.EventData.Data[0].'#text'
-                        $commandline=$eventXML.Event.EventData.Data[1].'#text'
+                        $servicename = $xml.Event.EventData.Data[0].'#text'
+                        $c = $xml.Event.EventData.Data[1].'#text'
                         # Check for suspicious service name
                         $text = (Check-Regex -String $servicename -Type 1)
                         if ($text) {
-                            $obj.Message = 'New Service Created'
-                            $obj.Command = $commandline
-                            $obj.Results = "Service name: $servicename`n"
-                            $obj.Results +=$text 
-                            $obj
+                            $o.Message = 'New Service Created'
+                            $o.Command = $c
+                            $o.Results = @"
+Service name: $servicename
+$text
+"@
+                            $o
                         }
                         # Check for suspicious cmd
-                        if ($commandline) {
-                            $servicecmd=1 # CLIs via service creation get extra checks 
-                            Check-Command -CommandLine $commandline
+                        if ($c) {
+                            $servicecmd = 1 # CLIs via service creation get extra checks 
+                            Check-Command -CommandLine $c
                         }
                         break
                     }
                     '7030' {
                         # The ... service is marked as an interactive service.  However, the system is configured 
                         # to not allow interactive services.  This service may not function properly.
-                        $servicename=$eventXML.Event.EventData.Data.'#text'
-                        $obj.Message = 'Interactive service warning'
-                        $obj.Results = "Service name: $servicename`n"
-                        $obj.Results += 'Malware (and some third party software) trigger this warning'
                         # Check for suspicious service name
-                        $servicecmd=1 # CLIs via service creation get extra check
-                        $obj.Results += (Check-Regex -String $servicename -Type 1)
-                        $obj
+                        $servicecmd = 1 # CLIs via service creation get extra check
+                        $servicename = $xml.Event.EventData.Data.'#text'
+                        $o.Message = 'Interactive service warning'
+                        $o.Results = @"
+Service name: $servicename
+Malware (and some third party software) trigger this warning
+$(Check-Regex -String $servicename -Type 1)
+"@
+                        $o
                         break
                     }
                     '7036' {
                         # The ... service entered the stopped|running state.
-                        $servicename=$eventXML.Event.EventData.Data[0].'#text'
+                        $servicename = $xml.Event.EventData.Data[0].'#text'
                         $text = (Check-Regex -String $servicename -Type 1)
                         if ($text) {
-                            $obj.Message = 'Suspicious Service Name'
-                            $obj.Results = "Service name: $servicename`n"
-                            $obj.Results += $text
-                            $obj
+                            $o.Message = 'Suspicious Service Name'
+                            $o.Results = @"
+Service name: $servicename
+$text
+"@
+                            $o
                         }
                         break
                     }
                     '7040' {
                         # The start type of the Windows Event Log service was changed from auto start to disabled.
-                        $servicename=$eventXML.Event.EventData.Data[0].'#text'
-                        $action = $eventXML.Event.EventData.Data[1].'#text'
+                        $servicename = $xml.Event.EventData.Data[0].'#text'
+                        $action = $xml.Event.EventData.Data[1].'#text'
                         if ($servicename -ccontains 'Windows Event Log') {
-                            $obj.Results = "Service name: $servicename`n"
-                            $obj.Results += $text
+                            $o.Results = @"
+Service name: $servicename
+$text
+"@
                             if ($action -eq 'disabled') {
-                                $obj.Message = 'Event Log Service Stopped'
-                                $obj.Results += 'Selective event log manipulation may follow this event.'
+                                $o.Message = 'Event Log Service Stopped'
+                                $o.Results += 'Selective event log manipulation may follow this event.'
                             } elseif ($action -eq 'auto start') {
-                                $obj.Message = 'Event Log Service Started'
-                                $obj.Results += 'Selective event log manipulation may precede this event.'
+                                $o.Message = 'Event Log Service Started'
+                                $o.Results += 'Selective event log manipulation may precede this event.'
                             }
-                            $obj
+                            $o
                         }
                         break
                     }
@@ -679,10 +694,10 @@ Process {
                 break
             }
             'Application' {
-                if (($event.id -eq 2) -and ($event.Providername -eq 'EMET')) {
+                if (($e.id -eq 2) -and ($e.Providername -eq 'EMET')) {
                     # EMET Block
-                    $obj.Message='EMET Block'
-                    if ($event.Message) { 
+                    $o.Message = 'EMET Block'
+                    if ($e.Message) { 
                         # EMET Message is a blob of text that looks like this:
                         #########################################################
                         # EMET detected HeapSpray mitigation and will close the application: iexplore.exe
@@ -695,42 +710,44 @@ Process {
                         #   TID           : 0x9E8 (2536)
                         #   Module        : mshtml.dll
                         #  Address       : 0x6FBA7512, pull out relevant parts
-                        $array = $event.message -split '\n' # Split each line of the message into an array
+                        $array = $e.message -split '\n' # Split each line of the message into an array
                         $text = $array[0]
                         $application = ($array[3]).trim() -Replace '\s+:',':'
                         $command= $application -Replace '^Application: ',''
-                        $username = ($array[4]).trim() -Replace '\s+:',':'
-                        $obj.Message='EMET Block'
-                        $obj.Command = "$command"
-                        $obj.Results = "$text`n"
-                        $obj.Results += "$username`n" 
+                        $user = ($array[4]).trim() -Replace '\s+:',':'
+                        $o.Message = 'EMET Block'
+                        $o.Command = "$command"
+                        $o.Results = @"
+$text
+$user
+"@
                     } else {
                         # If the message is blank: EMET is not installed locally.
                         # This occurs when parsing remote event logs sent from systems with EMET installed
-                        $obj.Message='Warning: EMET Message field is blank. Install EMET locally to see full details of this alert'
+                        $o.Message = 'Warning: EMET Message field is blank. Install EMET locally to see full details of this alert'
                     }
-                    $obj
+                    $o
                 }
                 break
             }
             'Applocker' {
-                Switch ($event.id) {
+                Switch ($e.id) {
                     '8003' {
                         # ...was allowed to run but would have been prevented from running if the AppLocker policy were enforced.
-                        $obj.Message='Applocker Warning'
-                        $command = $event.message -Replace ' was .*$',''
-                        $obj.Command=$command
-                        $obj.Results = $event.message
-                        $obj
+                        $o.Message = 'Applocker Warning'
+                        $command = $e.message -Replace ' was .*$',''
+                        $o.Command = $command
+                        $o.Results = $e.message
+                        $o
                         break
                     }
                     '8004' {
-                        $obj.Message='Applocker Block'
+                        $o.Message = 'Applocker Block'
                         # ...was prevented from running.
-                        $command = $event.message -Replace ' was .*$',''
-                        $obj.Command=$command
-                        $obj.Results = $event.message
-                        $obj
+                        $command = $e.message -Replace ' was .*$',''
+                        $o.Command = $command
+                        $o.Results = $e.message
+                        $o
                         break
                     }
                     default {}
@@ -738,16 +755,16 @@ Process {
                 break
             }
             'PowerShell' {
-                Switch ($event.id) {
+                Switch ($e.id) {
                     '4103' {
-                        $commandline= $eventXML.Event.EventData.Data[2].'#text'
-                        if ($commandline -Match 'Host Application') { 
+                        $c = $xml.Event.EventData.Data[2].'#text'
+                        if ($c -Match 'Host Application') { 
                             # Multiline replace, remove everything before 'Host Application = '
-                            $commandline = $commandline -Replace '(?ms)^.*Host.Application = ',''
+                            $c = $c -Replace '(?ms)^.*Host.Application = ',''
                             # Remove every line after the 'Host Application = ' line.
-                            $commandline = $commandline -Replace "(?ms)`n.*$",''
-                            if ($commandline) {
-                              Check-Command -CommandLine $commandline
+                            $c = $c -Replace "(?ms)`n.*$",''
+                            if ($c) {
+                              Check-Command -CommandLine $c
                             }
                         }
                         break
@@ -770,7 +787,7 @@ Process {
                         #
                         # Thank you: @heinzarelli and @HackerHurricane
                         # 
-                        # The command's path is $eventxml.Event.EventData.Data[4]
+                        # The command's path is $xml.Event.EventData.Data[4]
                         #
                         # Blank path means it was run as a commandline. CLI parsing is *much* simpler than
                         # script parsing. See Revoke-Obfuscation for parsing the script blocks:
@@ -780,10 +797,10 @@ Process {
                         # Thanks to @danielhbohannon and @Lee_Holmes
                         #
                         # This ignores scripts and grabs PowerShell CLIs
-                        if (-not ($eventxml.Event.EventData.Data[4].'#text')) {
-                              $commandline=$eventXML.Event.EventData.Data[2].'#text'
-                              if ($commandline) {
-                                  Check-Command -CommandLine $commandline
+                        if (-not ($xml.Event.EventData.Data[4].'#text')) {
+                              $c = $xml.Event.EventData.Data[2].'#text'
+                              if ($c) {
+                                  Check-Command -CommandLine $c
                               }
                         }
                         break
@@ -793,13 +810,13 @@ Process {
                 break
             }
             'Sysmon' {
-                Switch ($event.id) {
+                Switch ($e.id) {
                     '1' {
                     # Check command lines
-                        $creator=$eventXML.Event.EventData.Data[14].'#text'
-                        $commandline=$eventXML.Event.EventData.Data[4].'#text'
-                        if ($commandline) {
-                            Check-Command -CommandLine $commandline
+                        $creator = $xml.Event.EventData.Data[14].'#text'
+                        $c = $xml.Event.EventData.Data[4].'#text'
+                        if ($c) {
+                            Check-Command -CommandLine $c
                         }
                         break
                     }
@@ -808,14 +825,14 @@ Process {
                         # This can be very chatty, so it's disabled. 
                         # Set $checkunsigned to 1 (global variable section) to enable:
                         if ($checkunsigned) {
-                            if ($eventXML.Event.EventData.Data[6].'#text' -eq 'false') {
-                                $obj.Message='Unsigned Image (DLL)'
-                                $image=$eventXML.Event.EventData.Data[3].'#text'
-                                $imageload=$eventXML.Event.EventData.Data[4].'#text'
-                                # $hash=$eventXML.Event.EventData.Data[5].'#text'
-                                $obj.Command=$imageload
-                                $obj.Results=  "Loaded by: $image"
-                                $obj
+                            if ($xml.Event.EventData.Data[6].'#text' -eq 'false') {
+                                $o.Message = 'Unsigned Image (DLL)'
+                                $image = $xml.Event.EventData.Data[3].'#text'
+                                $imageload = $xml.Event.EventData.Data[4].'#text'
+                                # $hash=$xml.Event.EventData.Data[5].'#text'
+                                $o.Command = $imageload
+                                $o.Results = "Loaded by: $image"
+                                $o
                              }
                          }
                         break
@@ -828,32 +845,38 @@ Process {
         } #endof logname switch
     }
 
-    # Iterate through admin logons hashtable (key is $username)
-    foreach ($username in $adminlogons.Keys) {
-        $securityid=$adminlogons.Get_Item($username)
-        if($multipleadminlogons.$username) {
-            $obj.Message='Multiple admin logons for one account'
-            $obj.Results= "Username: $username`n"
-            $obj.Results += "User SID Access Count: " + $securityid.split().Count
-            $obj
+    # Iterate through admin logons hashtable (key is $user)
+    foreach ($u in $adminlogons.Keys) {
+        $SID = $adminlogons.Get_Item($u)
+        if($multipleadminlogons.$u) {
+            $o.Message = 'Multiple admin logons for one account'
+            $o.Results = @"
+Username: $u
+User SID Access Count: $($SID.split().Count)
+"@
+            $o
         }
     }
-    # Iterate through failed logons hashtable (key is $username)
-    foreach ($username in $failedlogons.Keys) {
-        $count=$failedlogons.Get_Item($username)
+    # Iterate through failed logons hashtable (key is $u)
+    foreach ($u in $failedlogons.Keys) {
+        $count = $failedlogons.Get_Item($u)
         if ($count -gt $maxfailedlogons) {
-            $obj.Message='High number of logon failures for one account'
-            $obj.Results= "Username: $username`n"
-            $obj.Results += "Total logon failures: $count"
-            $obj
+            $o.Message = 'High number of logon failures for one account'
+            $o.Results = @"
+Username: $u
+Total logon failures: $count
+"@
+            $o
         }
     }
     # Password spraying:
     if (($totalfailedlogons -gt $maxfailedlogons) -and ($totalfailedaccounts -gt 1)) {
-        $obj.Message='High number of total logon failures for multiple accounts'
-        $obj.Results= "Total accounts: $totalfailedaccounts`n"
-        $obj.Results+= "Total logon failures: $totalfailedlogons`n"
-        $obj
+        $o.Message = 'High number of total logon failures for multiple accounts'
+        $o.Results = @"
+Total accounts: $totalfailedaccounts
+Total logon failures: $totalfailedlogons
+"@
+        $o
     }
 
 }
