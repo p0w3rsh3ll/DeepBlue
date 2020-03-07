@@ -160,7 +160,7 @@ Process {
     }
     $text += (Check-Obfuscation -String $CommandLine)
     $text += (Check-Regex -String $CommandLine -Type 0)
-    $text += (Check-Creator $CommandLine $creator)
+    $text += (Check-Creator -Command $CommandLine -Creator $creator)
     # Check for base64 encoded function, decode and print if found
     # This section is highly use case specific, other methods of base64 encoding and/or compressing may evade these checks
     if ($CommandLine -Match "\-enc.*[A-Za-z0-9/+=]{100}") {
@@ -274,18 +274,35 @@ Process {
 End {}
 }
 
-function Check-Creator($command,$creator) {
-    $creatortext=''  # Local variable for return output
-    if ($creator) {
+Function Check-Creator {
+Param(
+[Parameter(Mandatory)]
+[String]$Command,
+[Parameter()]
+[string]$Creator
+)
+Begin {
+    $creatortext = ''  # Local variable for return output
+}
+Process {
+    if ($Creator) {
         if ($command -Match 'powershell') {
-            if ($creator -Match 'PSEXESVC') {
-                $creatortext += "PowerShell launched via PsExec: $creator`n"
-            } elseif ($creator -Match 'WmiPrvSE') {
-                $creatortext += "PowerShell launched via WMI: $creator`n"
+            Switch ($Creator) {
+                'PSEXESVC' {
+                    $creatortext += "PowerShell launched via PsExec: $Creator`n"
+                    break
+                } 
+                'WmiPrvSE' {
+                    $creatortext += "PowerShell launched via WMI: $Creator`n"
+                    break
+                }
+                default {}
             }
         }
+        $creatortext
     }
-    $creatortext
+}
+End {}
 }
 
 #endregion
