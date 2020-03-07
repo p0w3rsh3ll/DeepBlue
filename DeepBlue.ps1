@@ -289,11 +289,11 @@ Process {
         if ($command -Match 'powershell') {
             Switch ($Creator) {
                 'PSEXESVC' {
-                    $creatortext += "PowerShell launched via PsExec: $Creator`n"
+                    $creatortext = "PowerShell launched via PsExec: $Creator`n"
                     break
                 } 
                 'WmiPrvSE' {
-                    $creatortext += "PowerShell launched via WMI: $Creator`n"
+                    $creatortext = "PowerShell launched via WMI: $Creator`n"
                     break
                 }
                 default {}
@@ -309,8 +309,8 @@ End {}
 
 #region init variables
     # Set up the global variables
-    $text='' # Temporary scratch pad variable to hold output text
-    $minlength=1000 # Minimum length of command line to alert
+    $text = '' # Temporary scratch pad variable to hold output text
+    $minlength = 1000 # Minimum length of command line to alert
     # Load cmd match regexes from csv file, ignore comments
     $regexes = @(
         @{ Type = '0' ; Regex = '^cmd.exe /c echo [a-z]{6} > \\\\.\\pipe\\[a-z]{6}$' ; String = 'Metasploit-style cmd with pipe (possible use of Meterpreter getsystem)'},
@@ -346,22 +346,22 @@ End {}
     }
 
     # Passworg guessing/spraying variables:
-    $maxfailedlogons=5 # Alert after this many failed logons
-    $failedlogons=@{}   # HashTable of failed logons per user
-    $totalfailedlogons=0 # Total number of failed logons (for all accounts)
-    $totalfailedaccounts=0 # Total number of accounts with a failed logon
+    $maxfailedlogons = 5 # Alert after this many failed logons
+    $failedlogons = @{}   # HashTable of failed logons per user
+    $totalfailedlogons = 0 # Total number of failed logons (for all accounts)
+    $totalfailedaccounts = 0 # Total number of accounts with a failed logon
     # Track total Sensitive Privilege Use occurrences
-    $totalsensprivuse=0
-    $maxtotalsensprivuse=4
+    $totalsensprivuse = 0
+    $maxtotalsensprivuse = 4
     # Admin logon variables:
-    $totaladminlogons=0  # Total number of logons with SeDebugPrivilege
-    $maxadminlogons=10   # Alert after this many admin logons
-    $adminlogons=@{}     # HashTable of admin logons
-    $multipleadminlogons=@{} #Hashtable to track multiple admin logons per account
-    $alert_all_admin=0   # Set to 1 to alert every admin logon (set to 0 disable this)
+    $totaladminlogons = 0  # Total number of logons with SeDebugPrivilege
+    $maxadminlogons = 10   # Alert after this many admin logons
+    $adminlogons = @{}     # HashTable of admin logons
+    $multipleadminlogons = @{} #Hashtable to track multiple admin logons per account
+    $alert_all_admin = 0   # Set to 1 to alert every admin logon (set to 0 disable this)
     # Obfuscation variables:
-    $minpercent=.65  # minimum percentage of alphanumeric and common symbols
-    $maxbinary=.50   # Maximum percentage of zeros and ones to detect binary encoding
+    $minpercent = .65  # minimum percentage of alphanumeric and common symbols
+    $maxbinary = .50   # Maximum percentage of zeros and ones to detect binary encoding
     # Password spray variables:
     $passspraytrack = @{}
     $passsprayuniqusermax = 6
@@ -431,8 +431,10 @@ Process {
                         $user = $xml.Event.EventData.Data[1].'#text'
                         $SID = $xml.Event.EventData.Data[3].'#text'
                         $privileges = $xml.Event.EventData.Data[4].'#text'
-                        if ($privileges -Match 'SeDebugPrivilege') { #Admin account with SeDebugPrivilege
-                            if ($alert_all_admin) { # Alert for every admin logon
+                        # Admin account with SeDebugPrivilege
+                        if ($privileges -Match 'SeDebugPrivilege') { 
+                            # Alert for every admin logon
+                            if ($alert_all_admin) { 
                                 $o.Message = 'Logon with SeDebugPrivilege (admin access)' 
                                 $o.Results = @"
 Username: $user
@@ -518,15 +520,15 @@ User SID: $SID
                     }
                     {$_ -in @('4728','4732','4756')} {
                         # A member was added to a security-enabled (global|local|universal) group.
-                        $groupname = $xml.Event.EventData.Data[2].'#text'
+                        $group = $xml.Event.EventData.Data[2].'#text'
                         # Check if group is Administrators, may later expand to all groups
-                        if ($groupname -eq 'Administrators') {    
+                        if ($group -eq 'Administrators') {    
                             $user = $xml.Event.EventData.Data[0].'#text'
                             $SID = $xml.Event.EventData.Data[1].'#text'
                             switch ($event.id) {
-                                4728 {$o.Message = "User added to global $groupname group"}
-                                4732 {$o.Message = "User added to local $groupname group"}
-                                4756 {$o.Message = "User added to universal $groupname group"}
+                                4728 {$o.Message = "User added to global $group group"}
+                                4732 {$o.Message = "User added to local $group group"}
+                                4756 {$o.Message = "User added to universal $group group"}
                             }
                             $o.Results = @"
 Username: $user
