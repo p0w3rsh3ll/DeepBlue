@@ -221,7 +221,7 @@ Function Get-RegexMatch {
 [CmdletBinding()]
 Param (
 [Parameter(Mandatory)]
-[ValidateNotNull()]
+[AllowEmptyString()]
 [string]$String,
 
 [Parameter(Mandatory)]
@@ -232,17 +232,21 @@ Begin {
     $regextext = '' # Local variable for return output
 }
 Process {
-    foreach ($regex in $regexes) {
-        if ($regex.Type -eq $type) {
-            if ($string -Match $regex.regex) {
-               $regextext += $regex.String + "`n"
+    if ($String) {
+        foreach ($regex in $regexes) {
+            if ($regex.Type -eq $type) {
+                if ($string -Match $regex.regex) {
+                   $regextext += $regex.String + "`n"
+                }
             }
         }
+        #if ($regextext) { 
+        #   $regextext = $regextext.Substring(0,$regextext.Length-1) # Remove final newline.
+        #}
+        $regextext
+    } else {
+        Write-Warning -Message 'Get-RegexMatch invoked with an empty string'
     }
-    #if ($regextext) { 
-    #   $regextext = $regextext.Substring(0,$regextext.Length-1) # Remove final newline.
-    #}
-    $regextext
 }
 End {}
 }
@@ -630,6 +634,7 @@ Accessing Host Name: $hostname
                     '7045' {
                         # A service was installed in the system.
                         $servicename = $xml.Event.EventData.Data[0].'#text'
+                        Write-Verbose -Message "Event ID 7045: Service Name $($servicename)"
                         $c = $xml.Event.EventData.Data[1].'#text'
                         # Check for suspicious service name
                         $text = (Get-RegexMatch -String $servicename -Type 1)
@@ -655,6 +660,7 @@ $text
                         # Check for suspicious service name
                         $servicecmd = 1 # CLIs via service creation get extra check
                         $servicename = $xml.Event.EventData.Data.'#text'
+                        Write-Verbose -Message "Event ID 7030: Service Name $($servicename)"
                         $o.Message = 'Interactive service warning'
                         $o.Results = @"
 Service name: $servicename
@@ -665,9 +671,14 @@ $(Get-RegexMatch -String $servicename -Type 1)
                         break
                     }
                     '7036' {
+                        # Other provider: VfpExt
+                        # The  service entered the Driver load start state.
+                        # The  service entered the Driver load complete state.
+                        if ($xml.Event.System.Provider.Name -eq 'Service Control Manager') {
                         # The ... service entered the stopped|running state.
                         $servicename = $xml.Event.EventData.Data[0].'#text'
                         $text = (Get-RegexMatch -String $servicename -Type 1)
+                        Write-Verbose -Message "Event ID 7036: Service Name $($servicename)"
                         if ($text) {
                             $o.Message = 'Suspicious Service Name'
                             $o.Results = @"
@@ -676,11 +687,13 @@ $text
 "@
                             $o
                         }
+                        }
                         break
                     }
                     '7040' {
                         # The start type of the Windows Event Log service was changed from auto start to disabled.
                         $servicename = $xml.Event.EventData.Data[0].'#text'
+                        Write-Verbose -Message "Event ID 7040: Service Name $($servicename)"
                         $action = $xml.Event.EventData.Data[1].'#text'
                         if ($servicename -ccontains 'Windows Event Log') {
                             $o.Results = @"
