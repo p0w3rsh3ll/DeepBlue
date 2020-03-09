@@ -1,5 +1,5 @@
 ﻿
-Function DeepBlue {
+Function Get-DeepBlueAnalysis {
 <#
     .SYNOPSIS
         A PowerShell module for hunt teaming via Windows event logs
@@ -9,17 +9,17 @@ Function DeepBlue {
         including use of malicious command lines including PowerShell. 
 
     .EXAMPLE
-        DeepBlue
+        Get-DeepBlueAnalysis
         
         Processes the local Windows security event log.
 
     .EXAMPLE
-        DeepBlue -Log System
+        Get-DeepBlueAnalysis -Log System
 
         Processes the local Windows system event log.
 
     .EXAMPLE
-        DeepBlue -File .\evtx\new-user-security.evtx
+        Get-DeepBlueAnalysis -File .\evtx\new-user-security.evtx
         
         Processes an evtx file.
 
@@ -62,7 +62,7 @@ $MaxBinary = .50   # Maximum percentage of zeros and ones to detect binary encod
 Begin {
 
 #region helper functions
-Function Check-EventFile {
+Function Get-EventFile {
 [CmdletBinding()]
 Param(
 [Parameter(Mandatory)]
@@ -98,7 +98,7 @@ End {}
 }
 
 # Return the Get-Winevent filter 
-Function Create-Filter {
+Function New-WinEventFilter {
 [CmdletBinding()]
 Param(
 [Parameter()]
@@ -148,7 +148,7 @@ Process {
 End {}
 }
 
-Function Check-Command {
+Function Get-SuspiciousCommand {
 [CmdletBinding()]
 Param(
 [Parameter(Mandatory)]
@@ -171,9 +171,9 @@ Process {
     if ($CommandLine.length -gt $minlength) {
         $text += "Long Command Line: greater than $minlength bytes`n"
     }
-    $text += (Check-Obfuscation -String $CommandLine)
-    $text += (Check-Regex -String $CommandLine -Type 0)
-    $text += (Check-Creator -Command $CommandLine -Creator $creator)
+    $text += (Get-ObfuscationReport -String $CommandLine)
+    $text += (Get-RegexMatch -String $CommandLine -Type 0)
+    $text += (Get-CreatorText -Command $CommandLine -Creator $creator)
     # Check for base64 encoded function, decode and print if found
     # This section is highly use case specific, other methods of base64 encoding and/or compressing may evade these checks
     if ($CommandLine -Match "\-enc.*[A-Za-z0-9/+=]{100}") {
@@ -198,8 +198,8 @@ Process {
             $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
             $o.Decoded = $decoded
             $text += 'Base64-encoded function`n'
-            $text += (Check-Obfuscation -String $decoded)
-            $text += (Check-Regex -String $decoded -Type 0)
+            $text += (Get-ObfuscationReport -String $decoded)
+            $text += (Get-RegexMatch -String $decoded -Type 0)
         }
     }
     if ($text) {
@@ -217,10 +217,11 @@ Process {
 End {}
 }    
 
-Function Check-Regex {
+Function Get-RegexMatch {
 [CmdletBinding()]
 Param (
 [Parameter(Mandatory)]
+[ValidateNotNull()]
 [string]$String,
 
 [Parameter(Mandatory)]
@@ -246,7 +247,7 @@ Process {
 End {}
 }
 
-Function Check-Obfuscation {
+Function Get-ObfuscationReport {
 [CmdletBinding()]
 Param(
 [Parameter(Mandatory)]
@@ -287,7 +288,7 @@ Process {
 End {}
 }
 
-Function Check-Creator {
+Function Get-CreatorText {
 Param(
 [Parameter(Mandatory)]
 [String]$Command,
@@ -383,12 +384,12 @@ Process {
     Switch ($PSCmdlet.ParameterSetName) {
         'ByLogName' {
             $logname = $Log 
-            $filter = Create-Filter -LogName $logname
+            $filter = New-WinEventFilter -LogName $logname
             break
         }
         'ByFilePath' {
-            $logname = Check-EventFile -File $File # -Verbose
-            $filter = Create-Filter -File $file -LogName $logname
+            $logname = Get-EventFile -File $File # -Verbose
+            $filter = New-WinEventFilter -File $file -LogName $logname
             break
         }
         default {}
@@ -398,8 +399,7 @@ Process {
         $HT = @{ FilterHashtable = $filter }
         $events = Get-WinEvent @HT -ErrorAction Stop
     } catch {
-        Write-Host "Get-WinEvent $filter -ErrorAction Stop"
-    	Write-Host "Get-WinEvent error: " $_.Exception.Message "`n"
+    	Write-Warning "Get-WinEvent failed because: $($_.Exception.Message)"
     }
 
     ForEach ($e in $events) {
@@ -427,7 +427,7 @@ Process {
                         $c = $xml.Event.EventData.Data[8].'#text'        # Process Command Line
                         $creator = $xml.Event.EventData.Data[13].'#text' # Creator Process Name
                         if ($c) {
-                            Check-Command -CommandLine $c
+                            Get-SuspiciousCommand -CommandLine $c
                         }
                         break
                     }
@@ -632,7 +632,7 @@ Accessing Host Name: $hostname
                         $servicename = $xml.Event.EventData.Data[0].'#text'
                         $c = $xml.Event.EventData.Data[1].'#text'
                         # Check for suspicious service name
-                        $text = (Check-Regex -String $servicename -Type 1)
+                        $text = (Get-RegexMatch -String $servicename -Type 1)
                         if ($text) {
                             $o.Message = 'New Service Created'
                             $o.Command = $c
@@ -645,7 +645,7 @@ $text
                         # Check for suspicious cmd
                         if ($c) {
                             $servicecmd = 1 # CLIs via service creation get extra checks 
-                            Check-Command -CommandLine $c
+                            Get-SuspiciousCommand -CommandLine $c
                         }
                         break
                     }
@@ -659,7 +659,7 @@ $text
                         $o.Results = @"
 Service name: $servicename
 Malware (and some third party software) trigger this warning
-$(Check-Regex -String $servicename -Type 1)
+$(Get-RegexMatch -String $servicename -Type 1)
 "@
                         $o
                         break
@@ -667,7 +667,7 @@ $(Check-Regex -String $servicename -Type 1)
                     '7036' {
                         # The ... service entered the stopped|running state.
                         $servicename = $xml.Event.EventData.Data[0].'#text'
-                        $text = (Check-Regex -String $servicename -Type 1)
+                        $text = (Get-RegexMatch -String $servicename -Type 1)
                         if ($text) {
                             $o.Message = 'Suspicious Service Name'
                             $o.Results = @"
@@ -771,7 +771,7 @@ $user
                             # Remove every line after the 'Host Application = ' line.
                             $c = $c -Replace "(?ms)`n.*$",''
                             if ($c) {
-                              Check-Command -CommandLine $c
+                              Get-SuspiciousCommand -CommandLine $c
                             }
                         }
                         break
@@ -807,7 +807,7 @@ $user
                         if (-not ($xml.Event.EventData.Data[4].'#text')) {
                               $c = $xml.Event.EventData.Data[2].'#text'
                               if ($c) {
-                                  Check-Command -CommandLine $c
+                                  Get-SuspiciousCommand -CommandLine $c
                               }
                         }
                         break
@@ -823,7 +823,7 @@ $user
                         $creator = $xml.Event.EventData.Data[14].'#text'
                         $c = $xml.Event.EventData.Data[4].'#text'
                         if ($c) {
-                            Check-Command -CommandLine $c
+                            Get-SuspiciousCommand -CommandLine $c
                         }
                         break
                     }
