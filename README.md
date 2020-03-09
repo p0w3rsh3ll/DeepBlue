@@ -12,3 +12,10 @@ Ed Skoudis prestened:
 * Vigorously control outbound traffic and look for beacons https://github.com/activecm/rita
 * Look for log anomalies - **DeepBlueCLI** by Eric Conrad, et al. https://github.com/sans-blue-team/DeepBlueCLI
 * Application White Listing (AWL)
+
+## Living off the Land
+https://lolbas-project.github.io
+
+https://www.ncsc.gov.uk/collection/supply-chain-security
+https://www.ncsc.gov.uk/collection/supply-chain-security/principles-supply-chain-security
+https://www.ncsc.gov.uk/files/supply_chain_ncsc_cpni_2.pdf
