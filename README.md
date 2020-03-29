@@ -29,9 +29,10 @@ You can also verify that the SHA256 hashes of downloaded files match those store
 ```powershell
 # Verify
 $HT = @{
-    CatalogFilePath = "/DeepBlue.cat"
-    Path = "./DeepBlue-master"
+    CatalogFilePath = "./DeepBlue.cat"
+    Path = "./"
     Detailed = $true
+    FilesToSkip = 'README.md'
 }
 Test-FileCatalog @HT
 ```
