@@ -125,6 +125,6 @@ You may need to create an exclusion the file, folder or process or create "allow
 
 ## Todo
 
-- [] Digitally sign the module files.
-- [] Make it available on the [PowerShellGallery](https://www.powershellgallery.com/).
-- [] Document the parameters in the Help.
+- [ ] Digitally sign the module files.
+- [ ] Make it available on the [PowerShellGallery](https://www.powershellgallery.com/).
+- [ ] Document the parameters in the Help.
