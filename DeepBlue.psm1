@@ -5,8 +5,8 @@ Function Get-DeepBlueAnalysis {
         A PowerShell module for hunt teaming via Windows event logs
 
     .DESCRIPTION
-        DeepBlueCLI can automatically determine events that are typically triggered during a majority of successful breaches, 
-        including use of malicious command lines including PowerShell. 
+        DeepBlueCLI can automatically determine events that are typically triggered during a majority of successful breaches,
+        including use of malicious command lines including PowerShell.
 
     .EXAMPLE
         Get-DeepBlueAnalysis
@@ -73,7 +73,7 @@ Begin {}
 Process {
     # File exists. Todo: verify it is an evtx file.
 
-    # Get-WinEvent will generate this error for non-evtx files: "...file does not appear to be a valid log file. 
+    # Get-WinEvent will generate this error for non-evtx files: "...file does not appear to be a valid log file.
     # Specify only .evtx, .etl, or .evt filesas values of the Path parameter."
     #
     # Check the LogName of the first event
@@ -242,7 +242,7 @@ Process {
                 }
             }
         }
-        #if ($regextext) { 
+        #if ($regextext) {
         #   $regextext = $regextext.Substring(0,$regextext.Length-1) # Remove final newline.
         #}
         $regextext
@@ -387,7 +387,7 @@ Process {
 
     Switch ($PSCmdlet.ParameterSetName) {
         'ByLogName' {
-            $logname = $Log 
+            $logname = $Log
             $filter = New-WinEventFilter -LogName $logname
             break
         }
@@ -485,7 +485,7 @@ Privileges: $privileges
         #                        -And $privileges -Match 'SeSystemEnvironmentPrivilege' `
         #                        -And $privileges -Match 'SeImpersonatePrivilege' `
         #                        -And $privileges -Match 'SeDelegateSessionUserImpersonatePrivilege') {
-        #                    $o.Message = 'Mimikatz token::elevate Privilege Use' 
+        #                    $o.Message = 'Mimikatz token::elevate Privilege Use'
         #                    $o.Results = "Username: $user`n"
         #                    $o.Results += "Domain: $domain`n"
         #                    $o.Results += "User SID: $SID`n"
@@ -504,7 +504,7 @@ Privileges: $privileges
         #                        -And $privileges -Match 'SeLoadDriverPrivilege' `
         #                        -And $privileges -Match 'SeImpersonatePrivilege' `
         #                        -And $privileges -Match 'SeDelegateSessionUserImpersonatePrivilege') {
-        #                    $o.Message = 'Metasploit psexec Privilege Use' 
+        #                    $o.Message = 'Metasploit psexec Privilege Use'
         #                    $o.Results = "Username: $user`n"
         #                    $o.Results += "Domain: $domain`n"
         #                    $o.Results += "User SID: $SID`n"
@@ -586,7 +586,7 @@ Domain Name: $( $xml.Event.EventData.Data[2].'#text')
                         $targetusername = $xml.Event.EventData.Data[5].'#text'
                         # $sourceip = $xml.Event.EventData.Data[12].'#text' # sourceip var not used in code
 
-                        # For each #4648 event, increment a counter in $passspraytrack. If that counter exceeds 
+                        # For each #4648 event, increment a counter in $passspraytrack. If that counter exceeds
                         # $passsprayloginmax, then check for $passsprayuniqusermax also exceeding threshold and raise
                         # a notice.
                         if ($null -eq $passspraytrack[$targetusername]) {
@@ -600,7 +600,7 @@ Domain Name: $( $xml.Event.EventData.Data[2].'#text')
                             # of accounts that also have similar explicit login patterns.
                             $passsprayuniquser = 0
                             foreach($k in $passspraytrack.keys) {
-                                if ($passspraytrack[$k] -gt $passsprayloginmax) { 
+                                if ($passspraytrack[$k] -gt $passsprayloginmax) {
                                     # $passsprayuniquser += 1
                                     $passsprayuniquser++
                                 }
@@ -649,13 +649,13 @@ $text
                         }
                         # Check for suspicious cmd
                         if ($c) {
-                            $servicecmd = 1 # CLIs via service creation get extra checks 
+                            $servicecmd = 1 # CLIs via service creation get extra checks
                             Get-SuspiciousCommand -CommandLine $c
                         }
                         break
                     }
                     '7030' {
-                        # The ... service is marked as an interactive service.  However, the system is configured 
+                        # The ... service is marked as an interactive service.  However, the system is configured
                         # to not allow interactive services.  This service may not function properly.
                         # Check for suspicious service name
                         $servicecmd = 1 # CLIs via service creation get extra check
@@ -778,7 +778,7 @@ $user
                 Switch ($e.id) {
                     '4103' {
                         $c = $xml.Event.EventData.Data[2].'#text'
-                        if ($c -Match 'Host Application') { 
+                        if ($c -Match 'Host Application') {
                             # Multiline replace, remove everything before 'Host Application = '
                             $c = $c -Replace '(?ms)^.*Host.Application = ',''
                             # Remove every line after the 'Host Application = ' line.
@@ -790,8 +790,8 @@ $user
                         break
                     }
                     '4104' {
-                        # This section requires PowerShell command logging for event 4104 , which seems to be default with 
-                        # Windows 10, but may not not the default with older Windows versions (which may log the script 
+                        # This section requires PowerShell command logging for event 4104 , which seems to be default with
+                        # Windows 10, but may not not the default with older Windows versions (which may log the script
                         # block but not the command that launched it).
                         # Caveats included because more testing of various Windows versions is needed
                         #
