@@ -1,4 +1,4 @@
-﻿
+
 Function Get-DeepBlueAnalysis {
 <#
     .SYNOPSIS
@@ -10,7 +10,7 @@ Function Get-DeepBlueAnalysis {
 
     .EXAMPLE
         Get-DeepBlueAnalysis
-        
+
         Processes the local Windows security event log.
 
     .EXAMPLE
@@ -20,7 +20,7 @@ Function Get-DeepBlueAnalysis {
 
     .EXAMPLE
         Get-DeepBlueAnalysis -File .\evtx\new-user-security.evtx
-        
+
         Processes an evtx file.
 
     .LINK
@@ -58,11 +58,12 @@ $PassSprayLoginMax = 6,
 # Obfuscation variables:
 $MinPercent = .65, # minimum percentage of alphanumeric and common symbols
 $MaxBinary = .50   # Maximum percentage of zeros and ones to detect binary encoding
-)           
+)
 Begin {
 
 #region helper functions
 Function Get-EventFile {
+[OutputType('System.String')]
 [CmdletBinding()]
 Param(
 [Parameter(Mandatory)]
@@ -97,8 +98,9 @@ Process {
 End {}
 }
 
-# Return the Get-Winevent filter 
+# Return the Get-Winevent filter
 Function New-WinEventFilter {
+[OutputType('System.Collections.Hashtable')]
 [CmdletBinding()]
 Param(
 [Parameter()]
@@ -215,7 +217,7 @@ Process {
     }
 }
 End {}
-}    
+}
 
 Function Get-RegexMatch {
 [CmdletBinding()]
@@ -269,16 +271,16 @@ Process {
     $nobinarystring = $lowercasestring -replace '[01]' # To catch binary encoding
     # Calculate the percent alphanumeric/common symbols
     if ($length -gt 0) {
-        $percent=(($length-$noalphastring.length)/$length)    
+        $percent=(($length-$noalphastring.length)/$length)
         # Adjust minpercent for very short commands, to avoid triggering short warnings
-        if (($length/100) -lt $minpercent) { 
-            $minpercent=($length/100) 
+        if (($length/100) -lt $minpercent) {
+            $minpercent=($length/100)
         }
         if ($percent -lt $minpercent) {
             $percent = '{0:P0}' -f $percent      # Convert to a percent
             $obfutext += "Possible command obfuscation: only $percent alphanumeric and common symbols`n"
         }
-        # Calculate the percent of binary characters  
+        # Calculate the percent of binary characters
         $percent=(($nobinarystring.length-$length/$length)/$length)
         $binarypercent = 1-$percent
         if ($binarypercent -gt $maxbinary) {
@@ -309,7 +311,7 @@ Process {
                 'PSEXESVC' {
                     $creatortext = "PowerShell launched via PsExec: $Creator`n"
                     break
-                } 
+                }
                 'WmiPrvSE' {
                     $creatortext = "PowerShell launched via WMI: $Creator`n"
                     break
@@ -349,7 +351,7 @@ End {}
         @{ Type = '0' ; Regex = '\\cvtres\.exe.*\\AppData\\Local\\Temp\\[A-Z0-9]{7}\.tmp' ; String = 'PSAttack-style command via cvtres.exe'},
         @{ Type = '1' ; Regex = '^[a-zA-Z]{22}$' ; String = 'Metasploit-style service name: 22 characters'},
         @{ Type = '1' ; Regex = '^[a-zA-Z]{16}$' ; String = 'Metasploit-style service name: 16 characters'}
-    ) | 
+    ) |
     ForEach-Object {
         [PSCustomObject]$_
     }
@@ -362,8 +364,6 @@ End {}
     ) | ForEach-Object {
         [PSCustomObject]$_
     }
-
-
 
     $failedlogons = @{} # HashTable of failed logons per user
     $totalfailedlogons = 0 # Total number of failed logons (for all accounts)
@@ -418,11 +418,11 @@ Process {
             Command = ''
             Decoded = ''
         }
-               
+
         $xml = [xml]$e.ToXml()
 
         $servicecmd = 0 # CLIs via service creation get extra checks, this defaults to 0 (no extra checks)
-        
+
         Switch ($logname) {
             'Security' {
                 Switch ($e.id) {
@@ -441,10 +441,10 @@ Process {
                         $SID = $xml.Event.EventData.Data[3].'#text'
                         $privileges = $xml.Event.EventData.Data[4].'#text'
                         # Admin account with SeDebugPrivilege
-                        if ($privileges -Match 'SeDebugPrivilege') { 
+                        if ($privileges -Match 'SeDebugPrivilege') {
                             # Alert for every admin logon
-                            if ($AlertAllAdmin) { 
-                                $o.Message = 'Logon with SeDebugPrivilege (admin access)' 
+                            if ($AlertAllAdmin) {
+                                $o.Message = 'Logon with SeDebugPrivilege (admin access)'
                                 $o.Results = @"
 Username: $user
 Domain: $($xml.Event.EventData.Data[2].'#text')
@@ -455,16 +455,16 @@ Privileges: $privileges
                             }
                             # Track User SIDs used during admin logons (can track one account logging into multiple systems)
                             $totaladminlogons++
-                            if ($adminlogons.ContainsKey($user)) { 
+                            if ($adminlogons.ContainsKey($user)) {
                                 $string = $adminlogons.$user
-                                if (-Not ($string -Match $SID)) { 
-                                    # One username with multiple admin logon SIDs 
+                                if (-Not ($string -Match $SID)) {
+                                    # One username with multiple admin logon SIDs
                                     $multipleadminlogons.Set_Item($user,1)
                                     $string += " $SID"
                                     $adminlogons.Set_Item($user,$string)
                                 }
                             } else {
-                                $adminlogons.add($user,$SID) 
+                                $adminlogons.add($user,$SID)
                                 #$adminlogons.$user = $SID
                             }
                             #$adminlogons.Set_Item($user,$securitysid)
@@ -519,7 +519,7 @@ Privileges: $privileges
                         # A user account was created.
                         $user = $xml.Event.EventData.Data[0].'#text'
                         $SID = $xml.Event.EventData.Data[2].'#text'
-                        $o.Message = 'New User Created' 
+                        $o.Message = 'New User Created'
                         $o.Results = @"
 Username: $user
 User SID: $SID
@@ -531,7 +531,7 @@ User SID: $SID
                         # A member was added to a security-enabled (global|local|universal) group.
                         $group = $xml.Event.EventData.Data[2].'#text'
                         # Check if group is Administrators, may later expand to all groups
-                        if ($group -eq 'Administrators') {    
+                        if ($group -eq 'Administrators') {
                             $user = $xml.Event.EventData.Data[0].'#text'
                             $SID = $xml.Event.EventData.Data[1].'#text'
                             switch ($event.id) {
@@ -558,7 +558,7 @@ User SID: $SID
                             $failedlogons.Set_Item($user,$count+1)
                         } else {
                             $failedlogons.Set_Item($user,1)
-                            $totalfailedaccounts++   
+                            $totalfailedaccounts++
                         }
                         break
                     }
@@ -584,7 +584,7 @@ Domain Name: $( $xml.Event.EventData.Data[2].'#text')
                         $user = $xml.Event.EventData.Data[1].'#text'
                         $hostname = $xml.Event.EventData.Data[2].'#text'
                         $targetusername = $xml.Event.EventData.Data[5].'#text'
-                        $sourceip = $xml.Event.EventData.Data[12].'#text'
+                        # $sourceip = $xml.Event.EventData.Data[12].'#text' # sourceip var not used in code
 
                         # For each #4648 event, increment a counter in $passspraytrack. If that counter exceeds 
                         # $passsprayloginmax, then check for $passsprayuniqusermax also exceeding threshold and raise
@@ -719,7 +719,7 @@ $text
                 if (($e.id -eq 2) -and ($e.Providername -eq 'EMET')) {
                     # EMET Block
                     $o.Message = 'EMET Block'
-                    if ($e.Message) { 
+                    if ($e.Message) {
                         # EMET Message is a blob of text that looks like this:
                         #########################################################
                         # EMET detected HeapSpray mitigation and will close the application: iexplore.exe
@@ -792,9 +792,9 @@ $user
                     '4104' {
                         # This section requires PowerShell command logging for event 4104 , which seems to be default with 
                         # Windows 10, but may not not the default with older Windows versions (which may log the script 
-                        # block but not the command that launched it). 
+                        # block but not the command that launched it).
                         # Caveats included because more testing of various Windows versions is needed
-                        # 
+                        #
                         # If the command itself is not being logged:
                         # Add the following to \Windows\System32\WindowsPowerShell\v1.0\profile.ps1
                         # $LogCommandHealthEvent = $true
@@ -806,12 +806,12 @@ $user
                         # http://hackerhurricane.blogspot.com/2014/11/i-powershell-logging-what-everyone.html
                         #
                         # Thank you: @heinzarelli and @HackerHurricane
-                        # 
+                        #
                         # The command's path is $xml.Event.EventData.Data[4]
                         #
                         # Blank path means it was run as a commandline. CLI parsing is *much* simpler than
                         # script parsing. See Revoke-Obfuscation for parsing the script blocks:
-                        # 
+                        #
                         # https://github.com/danielbohannon/Revoke-Obfuscation
                         #
                         # Thanks to @danielhbohannon and @Lee_Holmes
@@ -842,7 +842,7 @@ $user
                     }
                     '7' {
                         # Check for unsigned EXEs/DLLs:
-                        # This can be very chatty, so it's disabled. 
+                        # This can be very chatty, so it's disabled.
                         # Set $checkunsigned to 1 (global variable section) to enable:
                         if ($checkunsigned) {
                             if ($xml.Event.EventData.Data[6].'#text' -eq 'false') {
