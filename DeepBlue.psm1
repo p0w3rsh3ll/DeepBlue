@@ -186,6 +186,8 @@ Process {
     # This section is highly use case specific, other methods of base64 encoding and/or compressing may evade these checks
     if ($CommandLine -Match "\-enc.*[A-Za-z0-9/+=]{100}") {
         $base64= $CommandLine -Replace '^.* \-Enc(odedCommand)? ',''
+    } elseif ($CommandLine -Match ":FromBase64String\(\$") {
+        Write-Verbose -Message "[Get-SuspiciousCommand] Command contains FromBase64String followed by a variable:`n$($CommandLine)`n"
     } elseif ($CommandLine -Match ':FromBase64String\(') {
         $base64 = $CommandLine -Replace "^.*:FromBase64String\(\'*",''
         $base64 = $base64 -Replace "\'.*$",''
@@ -203,7 +205,12 @@ Process {
             $o.Decoded = $uncompressed
             $text += 'Base64-encoded and compressed function`n'
         } else {
-            $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
+            $decoded = $null
+            try {
+                $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
+            } catch {
+                Write-Warning -Message "Failed to convert from BASE64 `n$($base64)`n string because $($_.Exception.Message)"
+            }
             $o.Decoded = $decoded
             $text += 'Base64-encoded function`n'
             $text += (Get-ObfuscationReport -String $decoded)
@@ -263,6 +270,7 @@ Function Get-ObfuscationReport {
 [CmdletBinding()]
 Param(
 [Parameter(Mandatory)]
+[AllowEmptyString()]
 [string]$string
 )
 Begin {
@@ -271,29 +279,33 @@ Begin {
     $obfutext=''       # Local variable for return output
 }
 Process {
-    $lowercasestring=$string.ToLower()
-    $length=$lowercasestring.length
-    $noalphastring = $lowercasestring -replace '[a-z0-9/\;:|.]'
-    $nobinarystring = $lowercasestring -replace '[01]' # To catch binary encoding
-    # Calculate the percent alphanumeric/common symbols
-    if ($length -gt 0) {
-        $percent=(($length-$noalphastring.length)/$length)
-        # Adjust minpercent for very short commands, to avoid triggering short warnings
-        if (($length/100) -lt $minpercent) {
-            $minpercent=($length/100)
+    if ($string) {
+        $lowercasestring=$string.ToLower()
+        $length=$lowercasestring.length
+        $noalphastring = $lowercasestring -replace '[a-z0-9/\;:|.]'
+        $nobinarystring = $lowercasestring -replace '[01]' # To catch binary encoding
+        # Calculate the percent alphanumeric/common symbols
+        if ($length -gt 0) {
+            $percent=(($length-$noalphastring.length)/$length)
+            # Adjust minpercent for very short commands, to avoid triggering short warnings
+            if (($length/100) -lt $minpercent) {
+                $minpercent=($length/100)
+            }
+            if ($percent -lt $minpercent) {
+                $percent = '{0:P0}' -f $percent      # Convert to a percent
+                $obfutext += "Possible command obfuscation: only $percent alphanumeric and common symbols`n"
+            }
+            # Calculate the percent of binary characters
+            $percent=(($nobinarystring.length-$length/$length)/$length)
+            $binarypercent = 1-$percent
+            if ($binarypercent -gt $maxbinary) {
+                #$binarypercent = 1-$percent
+                $binarypercent = '{0:P0}' -f $binarypercent      # Convert to a percent
+                $obfutext += "Possible command obfuscation: $binarypercent zeroes and ones (possible numeric or binary encoding)`n"
+            }
         }
-        if ($percent -lt $minpercent) {
-            $percent = '{0:P0}' -f $percent      # Convert to a percent
-            $obfutext += "Possible command obfuscation: only $percent alphanumeric and common symbols`n"
-        }
-        # Calculate the percent of binary characters
-        $percent=(($nobinarystring.length-$length/$length)/$length)
-        $binarypercent = 1-$percent
-        if ($binarypercent -gt $maxbinary) {
-            #$binarypercent = 1-$percent
-            $binarypercent = '{0:P0}' -f $binarypercent      # Convert to a percent
-            $obfutext += "Possible command obfuscation: $binarypercent zeroes and ones (possible numeric or binary encoding)`n"
-        }
+    } else {
+        Write-Warning -Message 'Get-ObfuscationReport invoked with an empty string'
     }
     $obfutext
 }
