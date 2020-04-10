@@ -87,7 +87,8 @@ Process {
         'Security'    { 'Security'    ; break}
         'System'      { 'System'      ; break }
         'Application' { 'Application' ; break}
-        'Microsoft-Windows-AppLocker/EXE and DLL'  {'Applocker' ; break}
+        'Microsoft-Windows-AppLocker/EXE and DLL'    {'Applocker' ; break}
+        'Microsoft-Windows-AppLocker/MSI and Script' {'Applocker' ; break}
         'Microsoft-Windows-PowerShell/Operational' {'Powershell'; break}
         'Microsoft-Windows-Sysmon/Operational'     {'Sysmon'    ; break}
         default {
@@ -136,7 +137,7 @@ Process {
             'Security'    {$filter=@{Logname='Security';ID=$sec_events} ;break}
             'System'      {$filter=@{Logname='System';ID=$sys_events } ;break}
             'Application' {$filter=@{Logname='Application';ID=$app_events} ;break}
-            'Applocker'   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL';ID=$applocker_events} ;break}
+            'Applocker'   {$filter=@{logname='Microsoft-Windows-AppLocker/EXE and DLL','Microsoft-Windows-AppLocker/MSI and Script';ID=$applocker_events} ;break}
             'Powershell'  {$filter=@{logname='Microsoft-Windows-PowerShell/Operational';ID=$powershell_events} ;break}
             'Sysmon'      {$filter=@{logname='Microsoft-Windows-Sysmon/Operational';ID=$sysmon_events} ;break}
             default       {
@@ -759,8 +760,8 @@ $user
                 break
             }
             'Applocker' {
-                Switch ($e.id) {
-                    '8003' {
+                Switch -Regex ($e.id) {
+                    '800(3|6)' {
                         # ...was allowed to run but would have been prevented from running if the AppLocker policy were enforced.
                         $o.Message = 'Applocker Warning'
                         $o.Command = "$($e.message -Replace ' was .*$','')"
@@ -768,7 +769,7 @@ $user
                         $o
                         break
                     }
-                    '8004' {
+                    '800(4|7)' {
                         # ...was prevented from running.
                         $o.Message = 'Applocker Block'
                         $o.Command = "$($e.message -Replace ' was .*$','')"
