@@ -91,7 +91,7 @@ Process {
         'Microsoft-Windows-PowerShell/Operational' {'Powershell'; break}
         'Microsoft-Windows-Sysmon/Operational'     {'Sysmon'    ; break}
         default {
-            Write-Error -Message "Input file $($File) that is a log $($event.LogName) is not handled"
+            Write-Warning -Message "[Get-EventFile] Input file $($File) that is a log $($event.LogName) is not handled"
         }
     }
 }
@@ -393,19 +393,25 @@ Process {
         }
         'ByFilePath' {
             $logname = Get-EventFile -File $File # -Verbose
-            $filter = New-WinEventFilter -File $file -LogName $logname
+            if ($logname) {
+                $filter = New-WinEventFilter -File $file -LogName $logname
+            } else {
+                Write-Warning -Message 'Filter not defined because this log file is not handled'
+            }
             break
         }
         default {}
     }
-
-    try {
-        $HT = @{ FilterHashtable = $filter }
-        $events = Get-WinEvent @HT -ErrorAction Stop
-    } catch {
-    	Write-Warning "Get-WinEvent failed because: $($_.Exception.Message)"
+    if ($filter) {
+        try {
+            $HT = @{ FilterHashtable = $filter }
+            $events = Get-WinEvent @HT -ErrorAction Stop
+        } catch {
+    	    Write-Warning "Get-WinEvent failed because: $($_.Exception.Message)"
+        }
+    } else {
+        Write-Warning -Message "Did not query log file $($File)"
     }
-
     ForEach ($e in $events) {
 
         # Prepare a custom reporting object:
