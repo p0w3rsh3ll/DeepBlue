@@ -57,7 +57,9 @@ $PassSprayUniqUserMax = 6,
 $PassSprayLoginMax = 6,
 # Obfuscation variables:
 $MinPercent = .65, # minimum percentage of alphanumeric and common symbols
-$MaxBinary = .50   # Maximum percentage of zeros and ones to detect binary encoding
+$MaxBinary = .50,   # Maximum percentage of zeros and ones to detect binary encoding
+
+[switch]$AddApplockerAllowEvents
 )
 Begin {
 
@@ -116,6 +118,9 @@ Begin {
     $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648')
     $app_events=@('2')
     $applocker_events=@('8003','8004','8006','8007')
+    if($AddApplockerAllowEvents) {
+        $applocker_events=@('8003','8004','8006','8007','8002','8005')
+    }
     $powershell_events=@('4103','4104')
     $sysmon_events=@('1','7')
 }
@@ -778,6 +783,19 @@ $user
                         break
                     }
                     default {}
+                }
+                if($AddApplockerAllowEvents) {
+                    Switch -Regex ($e.id) {
+                        '800(2|5)' {
+                            # ...was allowed to run.
+                            $o.Message = 'Applocker Allow'
+                            $o.Command = "$($e.message -Replace ' was .*$','')"
+                            $o.Results = $e.message
+                            $o
+                            break
+                        }
+                        default {}
+                    }
                 }
                 break
             }
