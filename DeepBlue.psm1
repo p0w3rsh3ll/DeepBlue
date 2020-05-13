@@ -59,7 +59,11 @@ $PassSprayLoginMax = 6,
 $MinPercent = .65, # minimum percentage of alphanumeric and common symbols
 $MaxBinary = .50,   # Maximum percentage of zeros and ones to detect binary encoding
 
-[switch]$AddApplockerAllowEvents
+[switch]$AddApplockerAllowEvents,
+
+[Parameter()]
+[ValidateRange(1,[int32]::MaxValue)]
+[int32]$LastHour
 )
 Begin {
 
@@ -154,7 +158,12 @@ Process {
             }
         }
     }
-    $filter
+    if ($LastHour) {
+        $null = $filter.Add('StartTime',((Get-Date).AddHours(-$LastHour)))
+        $filter
+    } else {
+        $filter
+    }
 
 }
 End {}
