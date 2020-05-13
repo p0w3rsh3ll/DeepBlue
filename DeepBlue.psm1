@@ -219,6 +219,9 @@ Process {
             $text += 'Base64-encoded and compressed function`n'
         } else {
             $decoded = $null
+            if ($base64 -match '\s-(in|out)putFormat\s') {
+                $base64 =  ($base64 -split '\s')[0]
+            }
             try {
                 $decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String($base64))
             } catch {
