@@ -908,6 +908,7 @@ $user
     foreach ($u in $adminlogons.Keys) {
         $SID = $adminlogons.Get_Item($u)
         if($multipleadminlogons.$u) {
+            $o.EventID = 9999
             $o.Date = $events[0].TimeCreated.AddSeconds(1)
             $o.Message = 'Multiple admin logons for one account'
             $o.Results = @"
@@ -921,6 +922,7 @@ User SID Access Count: $($SID.split().Count)
     foreach ($u in $failedlogons.Keys) {
         $count = $failedlogons.Get_Item($u)
         if ($count -gt $maxfailedlogons) {
+            $o.EventID = 9998
             $o.Date = $events[0].TimeCreated.AddSeconds(1)
             $o.Message = 'High number of logon failures for one account'
             $o.Results = @"
@@ -933,6 +935,7 @@ Total logon failures: $count
     # Password spraying:
     if (($totalfailedlogons -gt $maxfailedlogons) -and ($totalfailedaccounts -gt 1)) {
         $o.Date = $events[0].TimeCreated.AddSeconds(1)
+        $o.EventID = 9997
         $o.Message = 'High number of total logon failures for multiple accounts'
         $o.Results = @"
 Total accounts: $totalfailedaccounts
