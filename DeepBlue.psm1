@@ -956,6 +956,7 @@ Total logon failures: $count
         $o.Results = @"
 Total accounts: $totalfailedaccounts
 Total logon failures: $totalfailedlogons
+$($failedlogons.Keys| ForEach-Object {'{0}:{1}{2}' -f $_,$failedlogons["$($_)"],"`n" })
 "@
         $o
     }
