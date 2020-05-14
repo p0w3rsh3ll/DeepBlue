@@ -591,14 +591,18 @@ User SID: $SID
                         # An account failed to log on.
                         # Requires auditing logon failures
                         # https://technet.microsoft.com/en-us/library/cc976395.aspx
-                        $totalfailedlogons++
+                        $user = $null
                         $user = $xml.Event.EventData.Data[5].'#text'
-                        if($failedlogons.ContainsKey($user)) {
-                            $count = $failedlogons.Get_Item($user)
-                            $failedlogons.Set_Item($user,$count+1)
-                        } else {
-                            $failedlogons.Set_Item($user,1)
-                            $totalfailedaccounts++
+                        if ($user) {
+                            $totalfailedlogons++
+                        
+                            if($failedlogons.ContainsKey($user)) {
+                                $count = $failedlogons.Get_Item($user)
+                                $failedlogons.Set_Item($user,$count+1)
+                            } else {
+                                $failedlogons.Set_Item($user,1)
+                                $totalfailedaccounts++
+                            }
                         }
                         break
                     }
