@@ -129,3 +129,4 @@ You may need to create an exclusion the file, folder or process or create "allow
 - [ ] Digitally sign the module files.
 - [ ] Make it available on the [PowerShellGallery](https://www.powershellgallery.com/).
 - [ ] Document the parameters in the Help.
+- [x] Write Pester unit tests for this module.
