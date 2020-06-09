@@ -48,7 +48,6 @@ Param(
 
 # Passworg guessing/spraying variables:
 $MaxFailedLogons = 5,  # Alert after this many failed logons
-$MaxAdminLogons = 10,  # Alert after this many admin logons
 $MaxTotalSensPrivUse = 4,
 [switch]$AlertAllAdmin, # To alert every admin logon
 # Sysmon: Check for unsigned EXEs/DLLs. This can be very chatty..
@@ -60,6 +59,7 @@ $MinPercent = .65, # minimum percentage of alphanumeric and common symbols
 $MaxBinary = .50,   # Maximum percentage of zeros and ones to detect binary encoding
 
 [switch]$AddApplockerAllowEvents,
+[switch]$AddPowerShellInfoEvents,
 
 [Parameter()]
 [ValidateRange(1,[int32]::MaxValue)]
@@ -84,12 +84,12 @@ Process {
     #
     # Check the LogName of the first event
     try {
-        $event = Get-WinEvent -Path $File -MaxEvents 1 -ErrorAction Stop -Verbose:$false
+        $e = Get-WinEvent -Path $File -MaxEvents 1 -ErrorAction Stop -Verbose:$false
     } catch {
         Write-Verbose "Get-WinEvent cannot read $($File) because $($_.Exception.Message)" -Verbose
     }
-    Write-Verbose -Message "Input file $($File) contains a log $($event.LogName)"
-    switch ($event.LogName) {
+    Write-Verbose -Message "Input file $($File) contains a log $($e.LogName)"
+    switch ($e.LogName) {
         'Security'    { 'Security'    ; break}
         'System'      { 'System'      ; break }
         'Application' { 'Application' ; break}
@@ -98,7 +98,7 @@ Process {
         'Microsoft-Windows-PowerShell/Operational' {'Powershell'; break}
         'Microsoft-Windows-Sysmon/Operational'     {'Sysmon'    ; break}
         default {
-            Write-Warning -Message "[Get-EventFile] Input file $($File) that is a log $($event.LogName) is not handled"
+            Write-Warning -Message "[Get-EventFile] Input file $($File) that is a log $($e.LogName) is not handled"
         }
     }
 }
@@ -108,7 +108,7 @@ End {}
 # Return the Get-Winevent filter
 Function New-WinEventFilter {
 [OutputType('System.Collections.Hashtable')]
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 Param(
 [Parameter()]
 [string]$File,
@@ -158,11 +158,13 @@ Process {
             }
         }
     }
-    if ($LastHour) {
-        $null = $filter.Add('StartTime',((Get-Date).AddHours(-$LastHour)))
-        $filter
-    } else {
-        $filter
+    if ($PSCmdlet.ShouldProcess('Create filter')) {
+        if ($LastHour) {
+            $null = $filter.Add('StartTime',((Get-Date).AddHours(-$LastHour)))
+            $filter
+        } else {
+            $filter
+        }
     }
 
 }
@@ -216,7 +218,7 @@ Process {
                 )
             ).ReadToEnd()
             $o.Decoded = $uncompressed
-            $text += 'Base64-encoded and compressed function`n'
+            $text += 'Base64-encoded and compressed function'
         } else {
             $decoded = $null
             if ($base64 -match '\s-(in|out)putFormat\s') {
@@ -228,7 +230,7 @@ Process {
                 Write-Warning -Message "Failed to convert from BASE64 `n$($base64)`n string because $($_.Exception.Message)"
             }
             $o.Decoded = $decoded
-            $text += 'Base64-encoded function`n'
+            $text += "Base64-encoded function`n"
             $text += (Get-ObfuscationReport -String $decoded)
             $text += (Get-RegexMatch -String $decoded -Type 0)
         }
@@ -304,7 +306,7 @@ Process {
         if ($length -gt 0) {
             $percent=(($length-$noalphastring.length)/$length)
             # Adjust minpercent for very short commands, to avoid triggering short warnings
-            if (($length/100) -lt $minpercent) {
+            if (($length/100) -lt $1:MinPercent) {
                 $minpercent=($length/100)
             }
             if ($percent -lt $minpercent) {
@@ -314,7 +316,7 @@ Process {
             # Calculate the percent of binary characters
             $percent=(($nobinarystring.length-$length/$length)/$length)
             $binarypercent = 1-$percent
-            if ($binarypercent -gt $maxbinary) {
+            if ($binarypercent -gt $MaxBinary) {
                 #$binarypercent = 1-$percent
                 $binarypercent = '{0:P0}' -f $binarypercent      # Convert to a percent
                 $obfutext += "Possible command obfuscation: $binarypercent zeroes and ones (possible numeric or binary encoding)`n"
@@ -595,7 +597,7 @@ User SID: $SID
                         $user = $xml.Event.EventData.Data[5].'#text'
                         if ($user) {
                             $totalfailedlogons++
-                        
+
                             if($failedlogons.ContainsKey($user)) {
                                 $count = $failedlogons.Get_Item($user)
                                 $failedlogons.Set_Item($user,$count+1)
@@ -875,10 +877,29 @@ $user
                         #
                         # This ignores scripts and grabs PowerShell CLIs
                         if (-not ($xml.Event.EventData.Data[4].'#text')) {
-                              $c = $xml.Event.EventData.Data[2].'#text'
-                              if ($c) {
-                                  Get-SuspiciousCommand -CommandLine $c
-                              }
+
+                            # $xml.Event.System.Level -eq 5 # Verbose
+                            # Warning
+                            if ($AddPowerShellInfoEvents -or ($xml.Event.System.Level -eq 3)) {
+
+                                # if it's partial? we want to skip it
+                                # <Data Name="MessageNumber">1</Data>
+                                # <Data Name="MessageTotal">1</Data>
+                                if ($xml.Event.EventData.Data[0].'#text' -eq $xml.Event.EventData.Data[1].'#text') {
+
+                                    $c = $xml.Event.EventData.Data[2].'#text'
+                                    if ($c) {
+                                        # has scriptblock
+                                        if ($c -notmatch "^-----BEGIN CMS-----`n") {
+                                            Get-SuspiciousCommand -CommandLine $c
+                                        } else {
+                                            # it's an encrypted scriptblock
+                                        }
+                                    }
+                                } else {
+                                    # is partial
+                                }
+                            }
                         }
                         break
                     }
