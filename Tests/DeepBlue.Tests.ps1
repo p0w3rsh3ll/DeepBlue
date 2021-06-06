@@ -231,10 +231,10 @@ Describe 'Testing Sample EVTX files' {
         $r | Select-Object -Skip 1 | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should -Be $true
+                $o.Command -match 'powershell\.exe'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[AppDomain\]::'| Should -Be $true
+                $o.Decoded -match '\[AppDomain\]::'| Should Be $true
             }
 
             $i++
@@ -293,18 +293,18 @@ Describe 'Testing Sample EVTX files' {
         $r | Select-Object -Skip 1 | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should -Be $true
+                $o.Command -match 'powershell\.exe'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[AppDomain\]::'| Should -Be $true
+                $o.Decoded -match '\[AppDomain\]::'| Should Be $true
             }
             # [System.Convert]::FromBase64String
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[System\.Convert\]::FromBase64String'| Should -Be $true
+                $o.Decoded -match '\[System\.Convert\]::FromBase64String'| Should Be $true
             }
             # GetMethod('GetProcAddress').Invoke
             It "Test result $($i) Decoded" {
-                $o.Decoded -match "GetMethod\('GetProcAddress'\)\.Invoke"| Should -Be $true
+                $o.Decoded -match "GetMethod\('GetProcAddress'\)\.Invoke"| Should Be $true
             }
             # kernel32.dll VirtualAlloc
             It "Test result $($i) Decoded" {
@@ -579,28 +579,28 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
         $r | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should -Be $true
+                $o.Command -match 'powershell\.exe'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'New-Object'| Should -Be $true
+                $o.Decoded -match 'New-Object'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'SyStEm\.NET\.WeBClIeNt'| Should -Be $true
+                $o.Decoded -match 'SyStEm\.NET\.WeBClIeNt'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'https?://'| Should -Be $true
+                $o.Decoded -match 'https?://'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'iex'| Should -Be $true
+                $o.Decoded -match 'iex'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[[cC][hH][aA][rR]\['| Should -Be $true
+                $o.Decoded -match '\[[cC][hH][aA][rR]\['| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\.DOwnloaDSTrING\('| Should -Be $true
+                $o.Decoded -match '\.DOwnloaDSTrING\('| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '-[bB]?[x|X][oO][rR]'| Should -Be $true
+                $o.Decoded -match '-[bB]?[x|X][oO][rR]'| Should Be $true
             }
         }
     }
@@ -651,13 +651,13 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
         $r | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should -Be $true
+                $o.Command -match 'powershell\.exe'| Should Be $true
             }
             It "Test result $($i) Command" {
                 $o.Command -match "IEX\s\(New-Object\sNet\.WebClient\)\.DownloadString\('http"| Should Be $true
             }
             It "Test result $($i) Command" {
-                $o.Command -match 'Mimikatz'| Should -Be $true
+                $o.Command -match 'Mimikatz'| Should Be $true
             }
         }
     }
