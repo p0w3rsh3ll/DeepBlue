@@ -67,8 +67,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date.ToUniversalTime()) -Property $p)| Should Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                 }
                 }
             }
             $i++
@@ -92,8 +99,14 @@ Describe 'Testing Sample EVTX files' {
         $props |
         ForEach-Object {
             $p = $_
-            It "Test result 1 $($p)" {
-                $null -eq (Compare-Object -ReferenceObject ($r[0]) -DifferenceObject ($exr) -Property $p)| Should -Be $true
+            if ($p -eq 'Date') {
+             It "Test result 1 $($p)" {
+                $null -eq (Compare-Object -ReferenceObject ($r[0].Date.ToUniversalTime()) -DifferenceObject ($exr.Date.ToUniversalTime()) -Property $p)| Should Be $true
+             }
+            } else {
+             It "Test result 1 $($p)" {
+                $null -eq (Compare-Object -ReferenceObject ($r[0]) -DifferenceObject ($exr) -Property $p)| Should Be $true
+             }
             }
         }
     }
