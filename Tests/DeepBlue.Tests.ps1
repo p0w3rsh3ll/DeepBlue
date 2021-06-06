@@ -130,7 +130,7 @@ Describe 'Testing Sample EVTX files' {
                     Log='System'
                     EventID=[int]7036
                     Message='Suspicious Service Name'
-                    Results="Service name: KgXItsbKgTJzdzwl`r`nMetasploit-style service name: 16 characters`n"
+                    Results="Service name: KgXItsbKgTJzdzwl`nMetasploit-style service name: 16 characters`n"
                     Command=''
                     Decoded=''
                 },
@@ -139,7 +139,7 @@ Describe 'Testing Sample EVTX files' {
                     Log='System'
                     EventID=[int]7036
                     Message='Suspicious Service Name'
-                    Results="Service name: KgXItsbKgTJzdzwl`r`nMetasploit-style service name: 16 characters`n"
+                    Results="Service name: KgXItsbKgTJzdzwl`nMetasploit-style service name: 16 characters`n"
                     Command=''
                     Decoded=''
                 },
