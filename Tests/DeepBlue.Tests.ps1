@@ -50,14 +50,14 @@ Describe 'Testing Sample EVTX files' {
                     Log     = 'System'
                     EventID = [int]7040
                     Message = 'Event Log Service Stopped'
-                    Results = "Service name: Windows Event Log`r`nSelective event log manipulation may follow this event."
+                    Results = "Service name: Windows Event Log`nSelective event log manipulation may follow this event."
                 },
                 [PSCustomObject]@{
                     Date    = [datetime]636920030723739941
                     Log     = 'System'
                     EventID = [int]7040
                     Message = 'Event Log Service Started'
-                    Results = "Service name: Windows Event Log`r`nSelective event log manipulation may precede this event."
+                    Results = "Service name: Windows Event Log`nSelective event log manipulation may precede this event."
                 }
             )
         }
@@ -170,7 +170,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -222,7 +222,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -284,7 +284,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -308,14 +308,14 @@ Describe 'Testing Sample EVTX files' {
             }
             # kernel32.dll VirtualAlloc
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'kernel32\.dll\sVirtualAlloc'| Should -Be $true
+                $o.Decoded -match 'kernel32\.dll\sVirtualAlloc'| Should Be $true
             }
             # kernel32.dll CreateThread
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'kernel32\.dll\sCreateThread'| Should -Be $true
+                $o.Decoded -match 'kernel32\.dll\sCreateThread'| Should Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[System.RunTime\.'| Should -Be $true
+                $o.Decoded -match '\[System.RunTime\.'| Should Be $true
             }
             $i++
         }
@@ -345,7 +345,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -383,7 +383,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -429,7 +429,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -460,7 +460,7 @@ Describe 'Testing Sample EVTX files' {
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -521,7 +521,7 @@ $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -570,7 +570,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -642,7 +642,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
@@ -654,7 +654,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
                 $o.Command -match 'powershell\.exe'| Should -Be $true
             }
             It "Test result $($i) Command" {
-                $o.Command -match "IEX\s\(New-Object\sNet\.WebClient\)\.DownloadString\('http"| Should -Be $true
+                $o.Command -match "IEX\s\(New-Object\sNet\.WebClient\)\.DownloadString\('http"| Should Be $true
             }
             It "Test result $($i) Command" {
                 $o.Command -match 'Mimikatz'| Should -Be $true
@@ -740,7 +740,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             ForEach-Object {
                 $p = $_
                 It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
                 }
             }
             $i++
