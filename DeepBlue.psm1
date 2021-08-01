@@ -118,11 +118,11 @@ Param(
 
 )
 Begin {
-    $sys_events= @('7030','7036','7045','7040')
+    $sys_events= @('7030','7036','7045','7040','104')
     if ($AlertAllAdmin)  {
-        $sec_events= @('4672','4720','4728','4732','4756','4625','4673','4648')
+        $sec_events= @('4672','4720','4728','4732','4756','4625','4673','4648','1102')
     } else {
-        $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648')
+        $sec_events= @('4688','4672','4720','4728','4732','4756','4625','4673','4648','1102')
     }
     $app_events=@('2')
     $applocker_events=@('8003','8004','8006','8007')
@@ -671,6 +671,18 @@ Accessing Host Name: $hostname
                         }
                         break
                     }
+                    '1102' {
+                        # Security 1102 Message is a blob of text that looks like this:
+                        # The audit log was cleared.
+                        # Subject:
+                        # 	Security ID:	SEC504STUDENT\Sec504
+                        # 	Account Name:	Sec504
+                        # 	Domain Name:	SEC504STUDENT
+                        # 	Logon ID:	0x257CD
+                        $o.Message = 'Audit Log Clear'
+                        $o.Results = 'The Audit log was cleared by {0}' -f $xml.Event.EventData.Data[0].'#text'
+                        break
+                    }
                     default {}
                 }
                 break
@@ -755,6 +767,13 @@ $text
                             }
                             $o
                         }
+                        break
+                    }
+                    '104' {
+                        $UserName = '{0}\{1}' -f $xml.Event.UserData.LogFileCleared.SubjectDomainName,
+                        $xml.Event.UserData.LogFileCleared.SubjectUserName
+                        $o.Message = 'A Log was cleared'
+                        $o.Results = "A log $($xml.Event.UserData.LogFileCleared.Channel) was cleared by user $($UserName)"
                         break
                     }
                     default {}
