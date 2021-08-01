@@ -680,7 +680,10 @@ Accessing Host Name: $hostname
                         # 	Domain Name:	SEC504STUDENT
                         # 	Logon ID:	0x257CD
                         $o.Message = 'Audit Log Clear'
-                        $o.Results = 'The Audit log was cleared by {0}' -f $xml.Event.EventData.Data[0].'#text'
+                        $UserName = '{0}\{1}' -f $xml.Event.UserData.LogFileCleared.SubjectDomainName,
+                        $xml.Event.UserData.LogFileCleared.SubjectUserName
+                        $o.Results = 'The Audit log was cleared by {0}' -f $UserName
+                        $o
                         break
                     }
                     default {}
@@ -773,7 +776,8 @@ $text
                         $UserName = '{0}\{1}' -f $xml.Event.UserData.LogFileCleared.SubjectDomainName,
                         $xml.Event.UserData.LogFileCleared.SubjectUserName
                         $o.Message = 'A Log was cleared'
-                        $o.Results = "A log $($xml.Event.UserData.LogFileCleared.Channel) was cleared by user $($UserName)"
+                        $o.Results = "The log '$($xml.Event.UserData.LogFileCleared.Channel)' was cleared by user $($UserName)"
+                        $o
                         break
                     }
                     default {}
