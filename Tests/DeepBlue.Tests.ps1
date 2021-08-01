@@ -270,7 +270,7 @@ Describe 'Testing Sample EVTX files' {
             }
             $i++
         }
-        #$i=1
+        $i=1
         $r[1..$($r.Count-2)] | ForEach-Object {
             $o = $_
             It "Test result $($i) Command" {
@@ -279,7 +279,6 @@ Describe 'Testing Sample EVTX files' {
             It "Test result $($i) Decoded" {
                 $o.Decoded -match '\[AppDomain\]::'| Should -Be $true
             }
-
             $i++
         }
     }
